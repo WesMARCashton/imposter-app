@@ -30,6 +30,15 @@ function genCode() {
   return code;
 }
 
+function fisherYatesShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function genId() {
   return crypto.randomBytes(8).toString('hex');
 }
@@ -146,10 +155,10 @@ io.on('connection', (socket) => {
     if (room.players.length < 3) return cb && cb({ ok: false, error: 'Need at least 3 players' });
 
     const ids = room.players.map(p => p.id);
-    const shuffled = [...ids].sort(() => Math.random() - 0.5);
+    const rolePool = fisherYatesShuffle(ids);
 
     let mrWhiteId = null;
-    let pool = shuffled;
+    let pool = rolePool;
     if (room.settings.mrWhite) {
       mrWhiteId = pool[0];
       pool = pool.slice(1);
@@ -157,6 +166,8 @@ io.on('connection', (socket) => {
     const impCount = Math.min(room.settings.imposterCount, Math.max(1, Math.floor(pool.length / 2)));
     const imposterIds = pool.slice(0, impCount);
     const civilianIds = pool.slice(impCount);
+
+    const speakingOrderIds = fisherYatesShuffle(ids);
 
     const [civWord, impWord] = pickWordPair(room.settings.difficulty);
     const assignments = {};
@@ -166,8 +177,8 @@ io.on('connection', (socket) => {
 
     room.round = {
       assignments,
-      order: shuffled.map(id => room.players.find(p => p.id === id).name),
-      orderIds: shuffled,
+      order: speakingOrderIds.map(id => room.players.find(p => p.id === id).name),
+      orderIds: speakingOrderIds,
       votes: {},
       eliminatedId: null,
       mrWhiteId,
