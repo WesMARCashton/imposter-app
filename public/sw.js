@@ -1,4 +1,4 @@
-const CACHE = 'undercover-v1';
+const CACHE = 'undercover-v2';
 const ASSETS = ['/', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
