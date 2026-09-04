@@ -10,10 +10,9 @@
     room: null, // last room_update payload
     myRole: null, // {role, word, category}
     peeking: false,
+    peekModalOpen: false,
     error: '',
-    voteTarget: null,
-    timerSeconds: 0,
-    timerHandle: null
+    voteTarget: null
   };
 
   // ---- persistence for reconnect ----
@@ -39,6 +38,59 @@
       if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
     });
     return e;
+  }
+
+  function buildPeekCard() {
+    const role = state.myRole;
+    const card = el('div', { class: 'card' });
+    const lamp = el('div', { class: 'lamp' });
+    const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
+
+    const blank = el('div', { class: 'content blank' }, [
+      el('div', { class: 'role-word', text: '?' })
+    ]);
+
+    let roleLabel = 'CIVILIAN';
+    let wordDisplay = role.word || '';
+    if (role.role === 'imposter') roleLabel = 'IMPOSTER';
+    if (role.role === 'mrwhite') { roleLabel = 'MR. WHITE'; wordDisplay = 'No word \u2014 bluff your way through'; }
+
+    const secret = el('div', { class: 'content secret' }, [
+      el('div', { class: 'role-label', text: roleLabel }),
+      el('div', { class: 'role-word', text: wordDisplay }),
+      el('div', { class: 'category-tag', text: 'Category: ' + role.category })
+    ]);
+
+    card.appendChild(lamp);
+    card.appendChild(hint);
+    card.appendChild(blank);
+    card.appendChild(secret);
+
+    const startPeek = (e) => { e.preventDefault(); card.classList.add('peeking'); hint.textContent = 'Release to hide'; };
+    const endPeek = () => { card.classList.remove('peeking'); hint.textContent = 'Press and hold to peek'; };
+    card.addEventListener('touchstart', startPeek, { passive: false });
+    card.addEventListener('touchend', endPeek);
+    card.addEventListener('mousedown', startPeek);
+    card.addEventListener('mouseup', endPeek);
+    card.addEventListener('mouseleave', endPeek);
+    return card;
+  }
+
+  function appendPeekFab(container) {
+    if (!state.myRole) return;
+    container.appendChild(el('button', {
+      class: 'peek-fab', text: 'My Word',
+      onclick: () => { state.peekModalOpen = true; render(); }
+    }));
+    if (state.peekModalOpen) {
+      const overlay = el('div', { class: 'peek-overlay', onclick: (e) => { if (e.target === overlay) { state.peekModalOpen = false; render(); } } });
+      const modal = el('div', { class: 'peek-modal' }, [
+        buildPeekCard(),
+        el('button', { class: 'secondary small', text: 'Close', onclick: () => { state.peekModalOpen = false; render(); } })
+      ]);
+      overlay.appendChild(modal);
+      container.appendChild(overlay);
+    }
   }
 
   function brand() {
@@ -216,58 +268,19 @@
   VIEWS.reveal = function () {
     const role = state.myRole;
     const room = state.room;
+    const isHost = room && room.hostId === state.playerId;
     if (!role) { screen([brand(), el('p', { text: 'Dealing words\u2026' })]); return; }
 
-    const card = el('div', { class: 'card' });
-    const lamp = el('div', { class: 'lamp' });
-    const hint = el('div', { class: 'hint', text: state.peeking ? 'Release to hide' : 'Press and hold to peek' });
-
-    const blank = el('div', { class: 'content blank' }, [
-      el('div', { class: 'role-word', text: '?' })
-    ]);
-
-    let roleLabel = 'CIVILIAN';
-    let wordDisplay = role.word || '';
-    if (role.role === 'imposter') roleLabel = 'IMPOSTER';
-    if (role.role === 'mrwhite') { roleLabel = 'MR. WHITE'; wordDisplay = 'No word \u2014 bluff your way through'; }
-
-    const secret = el('div', { class: 'content secret' }, [
-      el('div', { class: 'role-label', text: roleLabel }),
-      el('div', { class: 'role-word', text: wordDisplay }),
-      el('div', { class: 'category-tag', text: 'Category: ' + role.category })
-    ]);
-
-    card.appendChild(lamp);
-    card.appendChild(hint);
-    card.appendChild(blank);
-    card.appendChild(secret);
-
-    const startPeek = (e) => { e.preventDefault(); state.peeking = true; card.classList.add('peeking'); hint.textContent = 'Release to hide'; };
-    const endPeek = () => { state.peeking = false; card.classList.remove('peeking'); hint.textContent = 'Press and hold to peek'; };
-    card.addEventListener('touchstart', startPeek, { passive: false });
-    card.addEventListener('touchend', endPeek);
-    card.addEventListener('mousedown', startPeek);
-    card.addEventListener('mouseup', endPeek);
-    card.addEventListener('mouseleave', endPeek);
-
-    const ready = room && room.round && room.round.readyCount != null;
-    const alreadyReady = state.readySent;
+    const card = buildPeekCard();
 
     screen([
       brand(),
       el('div', { class: 'card-reveal' }, [
         card,
-        el('p', { text: 'Memorize it. Do not show anyone else\u2019s screen.' }),
-        el('button', {
-          class: 'primary', text: alreadyReady ? 'Waiting for others\u2026' : 'I\u2019ve Seen It',
-          disabled: alreadyReady ? 'true' : null,
-          onclick: () => {
-            state.readySent = true;
-            socket.emit('mark_ready', { code: state.code, playerId: state.playerId });
-            render();
-          }
-        }),
-        room ? el('div', { class: 'progress-pill', text: `${room.round.readyCount}/${room.round.totalCount} ready` }) : null
+        el('p', { text: 'Memorize it. Do not show anyone else\u2019s screen. You can check it again anytime this round.' }),
+        isHost
+          ? el('button', { class: 'primary', text: 'Continue to Speaking Order', onclick: () => socket.emit('advance_phase', { code: state.code, playerId: state.playerId, to: 'order' }) })
+          : el('p', { class: 'center-note', text: 'Waiting for the host to continue.' })
       ])
     ]);
   };
@@ -282,7 +295,7 @@
         el('span', { text: name })
       ]));
     });
-    screen([
+    const container = el('div', { class: 'screen' }, [
       brand(),
       el('h2', { text: 'Speaking order' }),
       el('p', { text: 'Going in this order, each player says one short clue about their word out loud.' }),
@@ -292,41 +305,25 @@
         ? el('button', { class: 'primary', text: 'Start Discussion', onclick: () => socket.emit('advance_phase', { code: state.code, playerId: state.playerId, to: 'discuss' }) })
         : el('p', { class: 'center-note', text: 'Waiting for the host to start discussion.' })
     ]);
+    root.appendChild(container);
+    appendPeekFab(container);
   };
 
   VIEWS.discuss = function () {
     const room = state.room;
     const isHost = room.hostId === state.playerId;
-    if (!state.timerHandle && !state.timerStarted) {
-      state.timerSeconds = room.settings.discussSeconds;
-      state.timerStarted = true;
-      state.timerHandle = setInterval(() => {
-        state.timerSeconds -= 1;
-        if (state.timerSeconds <= 0) { clearInterval(state.timerHandle); state.timerHandle = null; }
-        if (state.view === 'discuss') updateTimerDisplay();
-      }, 1000);
-    }
-    screen([
+    const container = el('div', { class: 'screen' }, [
       brand(),
       el('h2', { text: 'Open discussion' }),
-      el('p', { text: 'Talk it out. Who sounded unsure? Who gave a vague clue?' }),
-      el('div', { class: 'timer', id: 'timerText', text: formatTime(state.timerSeconds) }),
+      el('p', { text: 'Talk it out. Who sounded unsure? Who gave a vague clue? Move on whenever you\u2019re ready.' }),
       el('div', { class: 'spacer' }),
       isHost
-        ? el('button', { class: 'primary', text: 'Start Voting', onclick: () => { clearInterval(state.timerHandle); state.timerHandle = null; state.timerStarted = false; socket.emit('advance_phase', { code: state.code, playerId: state.playerId, to: 'vote' }); } })
+        ? el('button', { class: 'primary', text: 'Start Voting', onclick: () => socket.emit('advance_phase', { code: state.code, playerId: state.playerId, to: 'vote' }) })
         : el('p', { class: 'center-note', text: 'Waiting for the host to open voting.' })
     ]);
+    root.appendChild(container);
+    appendPeekFab(container);
   };
-
-  function formatTime(sec) {
-    sec = Math.max(0, sec);
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-  function updateTimerDisplay() {
-    const elm = document.getElementById('timerText');
-    if (elm) elm.textContent = formatTime(state.timerSeconds);
-  }
 
   VIEWS.vote = function () {
     const room = state.room;
@@ -343,15 +340,17 @@
         }
       }, [el('span', { text: p.name + (p.id === state.playerId ? ' (you)' : '') }), selected ? el('span', { class: 'count', text: 'Selected' }) : null]));
     });
-    screen([
+    const container = el('div', { class: 'screen' }, [
       brand(),
       el('h2', { text: 'Who is the imposter?' }),
       el('p', { text: 'Tap a player to cast your vote.' }),
       grid,
       el('div', { class: 'progress-pill', text: `${room.round.votesCount}/${room.round.totalCount} voted` }),
       el('div', { class: 'spacer' }),
-      isHost ? el('button', { class: 'secondary', text: 'Tally Now', onclick: () => socket.emit('force_tally', { code: state.code, playerId: state.playerId }) }) : null
+      isHost ? el('button', { class: 'secondary', text: 'Host Override: Tally Now', onclick: () => socket.emit('force_tally', { code: state.code, playerId: state.playerId }) }) : null
     ]);
+    root.appendChild(container);
+    appendPeekFab(container);
   };
 
   VIEWS.results = function () {
@@ -435,9 +434,9 @@
     if (state.code) {
       const nextView = phaseToView(room);
       if (nextView !== state.view) {
-        if (nextView === 'reveal') { state.readySent = false; state.peeking = false; }
+        if (nextView === 'reveal') { state.peeking = false; state.peekModalOpen = false; }
         if (nextView === 'vote') { state.voteTarget = null; }
-        if (nextView === 'lobby') { state.myRole = null; state.readySent = false; state.timerStarted = false; }
+        if (nextView === 'lobby') { state.myRole = null; state.peekModalOpen = false; }
         state.view = nextView;
       }
       render();

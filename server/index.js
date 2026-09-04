@@ -44,7 +44,6 @@ function publicRoom(room) {
     round: room.round ? {
       phase: room.round.phase,
       order: room.round.order,
-      readyCount: room.round.readyIds ? room.round.readyIds.length : 0,
       totalCount: room.players.length,
       votesCount: room.round.votes ? Object.keys(room.round.votes).length : 0,
       eliminatedId: room.round.eliminatedId || null,
@@ -79,7 +78,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { imposterCount: 1, mrWhite: false, difficulty: 'medium', discussSeconds: 120 },
+      settings: { imposterCount: 1, mrWhite: false, difficulty: 'medium' },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -138,7 +137,6 @@ io.on('connection', (socket) => {
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
     room.settings.difficulty = ['easy', 'medium', 'hard', 'all'].includes(settings.difficulty) ? settings.difficulty : 'medium';
-    room.settings.discussSeconds = Math.min(Math.max(30, settings.discussSeconds || 120), 600);
     broadcastRoom(code);
   });
 
@@ -170,7 +168,6 @@ io.on('connection', (socket) => {
       assignments,
       order: shuffled.map(id => room.players.find(p => p.id === id).name),
       orderIds: shuffled,
-      readyIds: [],
       votes: {},
       eliminatedId: null,
       mrWhiteId,
@@ -198,20 +195,10 @@ io.on('connection', (socket) => {
     broadcastRoom(code);
   });
 
-  socket.on('mark_ready', ({ code, playerId }) => {
-    const room = rooms[code];
-    if (!room || !room.round || room.round.phase !== 'reveal') return;
-    if (!room.round.readyIds.includes(playerId)) room.round.readyIds.push(playerId);
-    if (room.round.readyIds.length >= room.players.length) {
-      room.round.phase = 'order';
-    }
-    broadcastRoom(code);
-  });
-
   socket.on('advance_phase', ({ code, playerId, to }) => {
     const room = rooms[code];
     if (!room || room.hostId !== playerId || !room.round) return;
-    const allowed = { order: 'discuss', discuss: 'vote' };
+    const allowed = { reveal: 'order', order: 'discuss', discuss: 'vote' };
     if (allowed[room.round.phase] === to) {
       room.round.phase = to;
       broadcastRoom(code);
