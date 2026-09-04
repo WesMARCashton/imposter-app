@@ -46,6 +46,11 @@ p { color: var(--muted); line-height: 1.5; margin: 0 0 20px; font-size: 15px; }
 .brand {
   display: flex; align-items: center; gap: 10px; margin-bottom: 34px;
 }
+.brand-spacer { flex: 1; }
+.leave-btn {
+  background: transparent; color: var(--muted); border: 1px solid var(--line);
+  padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 8px;
+}
 .brand .dot {
   width: 12px; height: 12px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #FFE49A, var(--amber) 60%, #8a6a12 100%);

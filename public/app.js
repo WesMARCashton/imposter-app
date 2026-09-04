@@ -94,7 +94,37 @@
   }
 
   function brand() {
-    return el('div', { class: 'brand' }, [el('div', { class: 'dot' }), el('span', { text: 'UNDERCOVER' })]);
+    const dot = el('div', { class: 'dot' });
+    const label = el('span', { text: 'UNDERCOVER' });
+    if (!state.code) {
+      return el('div', { class: 'brand' }, [dot, label]);
+    }
+    const isHost = state.room && state.room.hostId === state.playerId;
+    const actionBtn = el('button', {
+      class: 'leave-btn', text: isHost ? 'End Game' : 'Leave',
+      onclick: () => leaveOrEndGame(isHost)
+    });
+    return el('div', { class: 'brand' }, [dot, label, el('div', { class: 'brand-spacer' }), actionBtn]);
+  }
+
+  function leaveOrEndGame(isHost) {
+    if (isHost) {
+      if (!confirm('End the game for everyone?')) return;
+      socket.emit('end_game', { code: state.code, playerId: state.playerId });
+      goHome();
+    } else {
+      if (!confirm('Leave this game?')) return;
+      socket.emit('leave_room', { code: state.code, playerId: state.playerId }, () => {});
+      goHome();
+    }
+  }
+
+  function goHome() {
+    clearSession();
+    state.code = null; state.playerId = null; state.isHost = false;
+    state.room = null; state.myRole = null; state.peekModalOpen = false;
+    state.view = 'home';
+    render();
   }
 
   function screen(children, opts = {}) {
@@ -446,6 +476,10 @@
   socket.on('your_role', (role) => {
     state.myRole = role;
     render();
+  });
+
+  socket.on('room_ended', () => {
+    goHome();
   });
 
   function phaseToView(room) {

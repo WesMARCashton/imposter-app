@@ -251,9 +251,44 @@ io.on('connection', (socket) => {
     broadcastRoom(code);
   });
 
-  socket.on('leave_room', () => handleDisconnect(socket));
+  socket.on('leave_room', ({ code, playerId }, cb) => {
+    const room = rooms[code];
+    if (!room) { cb && cb({ ok: true }); return; }
+    removePlayer(room, playerId);
+    socket.leave(code);
+    socket.data.playerId = null;
+    socket.data.roomCode = null;
+    if (room.players.length === 0) {
+      delete rooms[code];
+    } else {
+      broadcastRoom(code);
+    }
+    cb && cb({ ok: true });
+  });
+
+  socket.on('end_game', ({ code, playerId }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== playerId) return;
+    io.to(code).emit('room_ended');
+    const roomSockets = io.sockets.adapter.rooms.get(code);
+    if (roomSockets) {
+      roomSockets.forEach(sid => {
+        const s = io.sockets.sockets.get(sid);
+        if (s) { s.leave(code); s.data.playerId = null; s.data.roomCode = null; }
+      });
+    }
+    delete rooms[code];
+  });
+
   socket.on('disconnect', () => handleDisconnect(socket));
 });
+
+function removePlayer(room, playerId) {
+  room.players = room.players.filter(p => p.id !== playerId);
+  if (room.hostId === playerId) {
+    room.hostId = room.players.length ? room.players[0].id : null;
+  }
+}
 
 function handleDisconnect(socket) {
   const code = socket.data.roomCode;
