@@ -1,0 +1,17 @@
+{
+  "name": "imposter-app",
+  "version": "1.0.0",
+  "description": "Local multiplayer social deduction word game",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
