@@ -35,7 +35,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'THE WEASEL' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'THE WEASEL', offmap: 'OFF THE MAP' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'The Weasel', offmap: 'Off the Map' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -56,6 +57,7 @@
   function buildPeekCard() {
     const role = state.myRole;
     if (role && role.game === 'weasel' && window.App.buildWeaselCard) return window.App.buildWeaselCard(role);
+    if (role && role.game === 'offmap' && window.App.buildOffmapCard) return window.App.buildOffmapCard(role);
     const card = el('div', { class: 'card' });
     const lamp = el('div', { class: 'lamp' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -94,7 +96,7 @@
     if (!state.myRole) return;
     container.classList.add('has-fab');
     container.appendChild(el('button', {
-      class: 'peek-fab', text: state.myRole.game === 'weasel' ? 'My Role' : 'My Word',
+      class: 'peek-fab', text: state.myRole.game ? 'My Role' : 'My Word',
       onclick: () => { state.peekModalOpen = true; render(); }
     }));
     if (state.peekModalOpen) {
@@ -111,7 +113,7 @@
   function brand() {
     const dot = el('div', { class: 'dot' });
     const label = el('span', { text: state.code ? GAME_LABELS[currentGame()] : 'PARTY GAMES' });
-    if (state.code && currentGame() === 'weasel') dot.classList.add('weasel');
+    if (state.code && currentGame() !== 'undercover') dot.classList.add(currentGame());
     if (!state.code) {
       return el('div', { class: 'brand' }, [dot, label]);
     }
@@ -156,7 +158,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'Social deduction party games. Undercover or The Weasel \u2014 host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: 'Social deduction party games: Undercover, The Weasel, Off the Map. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } })
@@ -244,17 +246,27 @@
 
     const game = currentGame();
     const minPlayers = game === 'weasel' ? 4 : 3;
+    const startBtn = (label) => el('div', { class: 'stack top' }, [
+      room.players.length < minPlayers ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
+      el('button', {
+        class: 'primary', id: 'start-btn', text: label,
+        onclick: () => socket.emit('start_game', { code: state.code, playerId: state.playerId }, (res) => {
+          if (res && !res.ok) { state.error = res.error; render(); }
+        })
+      }),
+      el('div', { class: 'error-text', text: state.error })
+    ]);
 
     if (isHost) {
       const s = room.settings;
       const gameTabs = el('div', { class: 'diff-tabs game-tabs' });
-      [['undercover', 'Undercover'], ['weasel', 'The Weasel']].forEach(([g, label]) => {
+      Object.entries(GAME_NAMES).forEach(([g, label]) => {
         gameTabs.appendChild(el('button', { class: g === game ? 'active' : '', text: label, onclick: () => updateSettings({ game: g }) }));
       });
       children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Game' })])]));
       children.push(gameTabs);
     } else {
-      children.push(el('p', { class: 'center-note', text: 'Game: ' + (game === 'weasel' ? 'The Weasel' : 'Undercover') }));
+      children.push(el('p', { class: 'center-note', text: 'Game: ' + GAME_NAMES[game] }));
     }
 
     if (isHost && game === 'weasel') {
@@ -292,6 +304,18 @@
         }),
         el('div', { class: 'error-text', text: state.error })
       ]));
+    } else if (isHost && game === 'offmap') {
+      const om = room.settings.offmap || { minutes: 8 };
+      children.push(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Round timer' }), el('div', { class: 'sub', text: 'Vote opens automatically when time runs out' })])
+      ]));
+      const tabs = el('div', { class: 'diff-tabs' });
+      [[0, 'Off'], [5, '5m'], [8, '8m'], [10, '10m'], [15, '15m']].forEach(([m, label]) => {
+        tabs.appendChild(el('button', { class: m === om.minutes ? 'active' : '', text: label, onclick: () => updateSettings({ offmap: { minutes: m } }) }));
+      });
+      children.push(tabs);
+      children.push(el('div', { style: 'height:18px' }));
+      children.push(startBtn('Start Off the Map'));
     } else if (isHost) {
       const s = room.settings;
       const settingsBox = el('div', {});
@@ -551,6 +575,7 @@
   function phaseToView(room) {
     if (!room.round) return 'lobby';
     if (room.round.game === 'weasel') return 'weasel';
+    if (room.round.game === 'offmap') return 'offmap';
     return room.round.phase || 'reveal';
   }
 
