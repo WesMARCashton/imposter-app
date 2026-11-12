@@ -20,6 +20,25 @@
   <path d="M56 72 Q60 68 64 72" fill="none" stroke="#EDEEF0" stroke-width="4"/>
 </svg>`;
 
+  // Question deck: shuffled per device, no repeats until the deck runs out.
+  function nextQuestion() {
+    if (!O.deck || !O.deck.length) {
+      const q = (window.OFFMAP_QUESTIONS || []).slice();
+      for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
+      O.deck = q;
+    }
+    O.question = O.deck.pop() || null;
+  }
+  function questionCard() {
+    if (!O.question) nextQuestion();
+    if (!O.question) return null;
+    return el('div', { class: 'om-qcard' }, [
+      el('div', { class: 'om-qcard-label', text: 'Need a question? Ask someone:' }),
+      el('div', { class: 'om-qcard-text', text: O.question }),
+      el('button', { class: 'secondary small', text: 'Skip \u2192 New question', onclick: () => { nextQuestion(); A.render(); } })
+    ]);
+  }
+
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });
@@ -102,6 +121,7 @@
       out.push(locationGrid(r, { guess: true }));
       out.push(el('button', { class: 'ghost', text: 'Cancel', onclick: () => { O.guessMode = false; A.render(); } }));
     } else {
+      out.push(questionCard());
       out.push(el('div', { class: 'label-sm', text: 'Possible locations (tap to cross off)' }));
       out.push(locationGrid(r, {}));
       if (isSpy) out.push(el('button', { class: 'danger', text: 'I know where we are — Guess', onclick: () => { O.guessMode = true; A.render(); } }));
