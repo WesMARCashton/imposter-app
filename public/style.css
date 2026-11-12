@@ -312,3 +312,26 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 @keyframes w-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .screen > .progress-pill { align-self: center; margin-top: 14px; }
 .screen.has-fab { padding-bottom: 88px; }
+
+/* ---------- Off the Map ---------- */
+.brand .dot.offmap {
+  background: radial-gradient(circle at 35% 30%, #B9D6FF, #4A8FE7 60%, #1d3f6e 100%);
+  box-shadow: 0 0 14px 2px rgba(74,143,231,0.55);
+}
+.card .role-label.om { color: #4A8FE7; font-weight: 700; }
+.om-timer { margin: 0 0 18px; font-size: 44px; }
+.om-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+.om-loc {
+  background: var(--surface); color: var(--text); border: 1px solid var(--line);
+  padding: 11px 8px; font-size: 13px; font-weight: 500; border-radius: 10px;
+}
+.om-loc.crossed { opacity: 0.3; text-decoration: line-through; }
+.om-grid.guessing .om-loc { border-color: var(--danger); }
+.om-guess-banner {
+  background: rgba(194,73,73,0.18); border: 1px solid var(--danger); color: var(--text);
+  border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 8px;
+}
+.om-answer { text-align: center; margin-bottom: 10px; }
+.om-answer .label-sm { margin: 0 0 4px; }
+.om-answer-loc { font-family: var(--font-display); font-size: 30px; font-weight: 700; }
+.om-answer .muted { color: var(--muted); font-size: 14px; margin-top: 4px; }
