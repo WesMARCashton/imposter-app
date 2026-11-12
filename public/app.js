@@ -23,7 +23,20 @@
   }
   function clearSession() { localStorage.removeItem('undercover_session'); }
 
-  function render() { root.innerHTML = ''; VIEWS[state.view](); }
+  function render() {
+    const y = window.scrollY;
+    const focusedId = document.activeElement && document.activeElement.id;
+    root.innerHTML = '';
+    (VIEWS[state.view] || VIEWS.home)();
+    window.scrollTo(0, y);
+    if (focusedId) {
+      const f = document.getElementById(focusedId);
+      if (f) { f.focus(); if (f.value !== undefined && f.setSelectionRange && f.type === 'text') { const n = f.value.length; f.setSelectionRange(n, n); } }
+    }
+  }
+
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'THE WEASEL' };
+  const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
     const e = document.createElement(tag);
@@ -42,6 +55,7 @@
 
   function buildPeekCard() {
     const role = state.myRole;
+    if (role && role.game === 'weasel' && window.App.buildWeaselCard) return window.App.buildWeaselCard(role);
     const card = el('div', { class: 'card' });
     const lamp = el('div', { class: 'lamp' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -78,8 +92,9 @@
 
   function appendPeekFab(container) {
     if (!state.myRole) return;
+    container.classList.add('has-fab');
     container.appendChild(el('button', {
-      class: 'peek-fab', text: 'My Word',
+      class: 'peek-fab', text: state.myRole.game === 'weasel' ? 'My Role' : 'My Word',
       onclick: () => { state.peekModalOpen = true; render(); }
     }));
     if (state.peekModalOpen) {
@@ -95,7 +110,8 @@
 
   function brand() {
     const dot = el('div', { class: 'dot' });
-    const label = el('span', { text: 'UNDERCOVER' });
+    const label = el('span', { text: state.code ? GAME_LABELS[currentGame()] : 'PARTY GAMES' });
+    if (state.code && currentGame() === 'weasel') dot.classList.add('weasel');
     if (!state.code) {
       return el('div', { class: 'brand' }, [dot, label]);
     }
@@ -140,7 +156,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'A local party game of hidden words and social deduction. Everyone plays from their own phone.' }),
+      el('p', { text: 'Social deduction party games. Undercover or The Weasel \u2014 host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } })
@@ -226,7 +242,57 @@
     });
     children.push(list);
 
+    const game = currentGame();
+    const minPlayers = game === 'weasel' ? 4 : 3;
+
     if (isHost) {
+      const s = room.settings;
+      const gameTabs = el('div', { class: 'diff-tabs game-tabs' });
+      [['undercover', 'Undercover'], ['weasel', 'The Weasel']].forEach(([g, label]) => {
+        gameTabs.appendChild(el('button', { class: g === game ? 'active' : '', text: label, onclick: () => updateSettings({ game: g }) }));
+      });
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Game' })])]));
+      children.push(gameTabs);
+    } else {
+      children.push(el('p', { class: 'center-note', text: 'Game: ' + (game === 'weasel' ? 'The Weasel' : 'Undercover') }));
+    }
+
+    if (isHost && game === 'weasel') {
+      const ws = room.settings.weasel || { rounds: 5, eliminations: true };
+      const box = el('div', {});
+      box.appendChild(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Missions' }), el('div', { class: 'sub', text: 'Mission + quiz rounds' })]),
+        el('div', { class: 'stepper' }, [
+          el('button', { class: 'secondary small', text: '\u2212', onclick: () => updateSettings({ weasel: { ...ws, rounds: Math.max(2, ws.rounds - 1) } }) }),
+          el('span', { class: 'val', text: ws.rounds }),
+          el('button', { class: 'secondary small', text: '+', onclick: () => updateSettings({ weasel: { ...ws, rounds: Math.min(8, ws.rounds + 1) } }) })
+        ])
+      ]));
+      box.appendChild(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Eliminations' }), el('div', { class: 'sub', text: 'Lowest quiz score is out each round. Ends at 2 crew left.' })]),
+        (() => {
+          const sw = el('label', { class: 'switch' });
+          const cb = el('input', { type: 'checkbox' });
+          cb.checked = ws.eliminations;
+          cb.addEventListener('change', () => updateSettings({ weasel: { ...ws, eliminations: cb.checked } }));
+          sw.appendChild(cb);
+          sw.appendChild(el('span', { class: 'track' }));
+          return sw;
+        })()
+      ]));
+      children.push(box);
+      const canStart = room.players.length >= minPlayers;
+      children.push(el('div', { class: 'stack top' }, [
+        !canStart ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
+        el('button', {
+          class: 'primary', id: 'start-btn', text: 'Start The Weasel',
+          onclick: () => socket.emit('start_game', { code: state.code, playerId: state.playerId }, (res) => {
+            if (res && !res.ok) { state.error = res.error; render(); }
+          })
+        }),
+        el('div', { class: 'error-text', text: state.error })
+      ]));
+    } else if (isHost) {
       const s = room.settings;
       const settingsBox = el('div', {});
       const impRow = el('div', { class: 'settings-row' }, [
@@ -269,7 +335,7 @@
       children.push(el('div', { class: 'stack top' }, [
         !canStart ? el('p', { text: 'Need at least 3 players to start.' }) : null,
         el('button', {
-          class: 'primary', text: 'Start Game', disabled: !canStart ? 'true' : null,
+          class: 'primary', id: 'start-btn', text: 'Start Game', disabled: !canStart ? 'true' : null,
           onclick: () => {
             socket.emit('start_game', { code: state.code, playerId: state.playerId }, (res) => {
               if (res && !res.ok) { state.error = res.error; render(); }
@@ -285,8 +351,8 @@
 
     screen(children);
     if (isHost) {
-      const startBtn = root.querySelector('button.primary');
-      if (startBtn && room.players.length < 3) startBtn.disabled = true;
+      const startBtn = root.querySelector('#start-btn') || root.querySelector('button.primary');
+      if (startBtn && room.players.length < minPlayers) startBtn.disabled = true;
     }
   };
 
@@ -466,7 +532,7 @@
       if (nextView !== state.view) {
         if (nextView === 'reveal') { state.peeking = false; state.peekModalOpen = false; }
         if (nextView === 'vote') { state.voteTarget = null; }
-        if (nextView === 'lobby') { state.myRole = null; state.peekModalOpen = false; }
+        if (nextView === 'lobby') { state.myRole = null; state.peekModalOpen = false; state.error = ''; }
         state.view = nextView;
       }
       render();
@@ -484,10 +550,14 @@
 
   function phaseToView(room) {
     if (!room.round) return 'lobby';
+    if (room.round.game === 'weasel') return 'weasel';
     return room.round.phase || 'reveal';
   }
 
   window.addEventListener('beforeunload', () => { /* keep session for reconnect */ });
+
+  // Shared toolkit for game modules (public/weasel.js)
+  window.App = { socket, state, root, el, render, brand, buildPeekCard, appendPeekFab, VIEWS };
 
   render();
 
