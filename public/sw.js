@@ -1,5 +1,5 @@
-const CACHE = 'undercover-v2';
-const ASSETS = ['/', '/style.css', '/app.js', '/manifest.json'];
+const CACHE = 'undercover-v3';
+const ASSETS = ['/', '/style.css', '/app.js', '/weasel.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

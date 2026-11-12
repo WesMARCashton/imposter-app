@@ -1,14 +1,18 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const crypto = require('crypto');
 const { Server } = require('socket.io');
 const { CATEGORY_LABELS, pickWordPair } = require('./words');
+const { shuffle: fisherYatesShuffle, genId } = require('./util');
+const weasel = require('./games/weasel');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
+weasel.init(io);
+const GAMES = ['undercover', 'weasel'];
+const isWeasel = (room) => room && room.settings.game === 'weasel';
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -30,19 +34,6 @@ function genCode() {
   return code;
 }
 
-function fisherYatesShuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function genId() {
-  return crypto.randomBytes(8).toString('hex');
-}
-
 function publicRoom(room) {
   return {
     code: room.code,
@@ -50,7 +41,7 @@ function publicRoom(room) {
     phase: room.phase,
     settings: room.settings,
     players: room.players.map(p => ({ id: p.id, name: p.name, connected: p.connected })),
-    round: room.round ? {
+    round: room.round && room.round.game === 'weasel' ? weasel.publicState(room) : room.round ? {
       phase: room.round.phase,
       order: room.round.order,
       totalCount: room.players.length,
@@ -87,7 +78,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { imposterCount: 1, mrWhite: false, difficulty: 'medium' },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -126,7 +117,9 @@ io.on('connection', (socket) => {
     socket.data.roomCode = code;
     cb({ ok: true, code, playerId, room: publicRoom(room) });
     // If mid-round, resend private role info
-    if (room.round && room.round.assignments && room.round.assignments[playerId]) {
+    if (room.round && room.round.game === 'weasel') {
+      weasel.resendPrivate(room, playerId);
+    } else if (room.round && room.round.assignments && room.round.assignments[playerId]) {
       socket.emit('your_role', room.round.assignments[playerId]);
     }
     broadcastRoom(code);
@@ -142,6 +135,8 @@ io.on('connection', (socket) => {
   socket.on('update_settings', ({ code, playerId, settings }) => {
     const room = rooms[code];
     if (!room || room.hostId !== playerId || room.phase !== 'lobby') return;
+    if (GAMES.includes(settings.game)) room.settings.game = settings.game;
+    if (settings.weasel) room.settings.weasel = weasel.sanitizeSettings(settings.weasel);
     const maxImposters = Math.max(1, Math.floor(room.players.length / 3));
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
@@ -152,6 +147,14 @@ io.on('connection', (socket) => {
   socket.on('start_game', ({ code, playerId }, cb) => {
     const room = rooms[code];
     if (!room || room.hostId !== playerId) return cb && cb({ ok: false, error: 'Not host' });
+    if (room.round) return cb && cb({ ok: false, error: 'Game already running' });
+    if (isWeasel(room)) {
+      if (room.players.length < weasel.MIN_PLAYERS) return cb && cb({ ok: false, error: `Need at least ${weasel.MIN_PLAYERS} players` });
+      weasel.start(room);
+      cb && cb({ ok: true });
+      broadcastRoom(code);
+      return;
+    }
     if (room.players.length < 3) return cb && cb({ ok: false, error: 'Need at least 3 players' });
 
     const ids = room.players.map(p => p.id);
@@ -208,6 +211,7 @@ io.on('connection', (socket) => {
 
   socket.on('advance_phase', ({ code, playerId, to }) => {
     const room = rooms[code];
+    if (isWeasel(room) && room.round) return;
     if (!room || room.hostId !== playerId || !room.round) return;
     const allowed = { reveal: 'order', order: 'discuss', discuss: 'vote' };
     if (allowed[room.round.phase] === to) {
@@ -218,6 +222,7 @@ io.on('connection', (socket) => {
 
   socket.on('cast_vote', ({ code, playerId, targetId }) => {
     const room = rooms[code];
+    if (isWeasel(room) && room.round) return;
     if (!room || !room.round || room.round.phase !== 'vote') return;
     room.round.votes[playerId] = targetId;
     if (Object.keys(room.round.votes).length >= room.players.length) {
@@ -228,6 +233,7 @@ io.on('connection', (socket) => {
 
   socket.on('force_tally', ({ code, playerId }) => {
     const room = rooms[code];
+    if (isWeasel(room) && room.round) return;
     if (!room || room.hostId !== playerId || !room.round || room.round.phase !== 'vote') return;
     resolveVote(room);
     broadcastRoom(code);
@@ -235,11 +241,34 @@ io.on('connection', (socket) => {
 
   socket.on('mrwhite_guess', ({ code, playerId, guess }) => {
     const room = rooms[code];
+    if (isWeasel(room) && room.round) return;
     if (!room || !room.round || room.round.mrWhiteId !== playerId) return;
     room.round.awaitingMrWhiteGuess = false;
     const correct = guess && guess.trim().toLowerCase() === room.round.civWord.toLowerCase();
     room.round.winner = correct ? 'mrwhite' : computeWinnerAfterElimination(room);
     finalizeResults(room);
+    broadcastRoom(code);
+  });
+
+  // ---- The Weasel ----
+  socket.on('w_advance', ({ code, playerId }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== playerId || !room.round || room.round.game !== 'weasel') return;
+    weasel.advance(room);
+    broadcastRoom(code);
+  });
+
+  socket.on('w_submit', ({ code, playerId, value }) => {
+    const room = rooms[code];
+    if (!room || !room.round || room.round.game !== 'weasel') return;
+    weasel.submit(room, playerId, value);
+    broadcastRoom(code);
+  });
+
+  socket.on('w_quiz_submit', ({ code, playerId, answers }) => {
+    const room = rooms[code];
+    if (!room || !room.round || room.round.game !== 'weasel') return;
+    weasel.submitQuiz(room, playerId, answers);
     broadcastRoom(code);
   });
 
@@ -285,6 +314,7 @@ io.on('connection', (socket) => {
 
 function removePlayer(room, playerId) {
   room.players = room.players.filter(p => p.id !== playerId);
+  if (room.round && room.round.game === 'weasel') weasel.onPlayerRemoved(room, playerId);
   if (room.hostId === playerId) {
     room.hostId = room.players.length ? room.players[0].id : null;
   }
