@@ -39,6 +39,7 @@
     ]);
   }
 
+  A.SPY_SVG = SPY_SVG;
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });

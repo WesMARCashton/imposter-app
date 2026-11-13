@@ -1,7 +1,7 @@
-// The Weasel — a hidden-saboteur game.
-// One secret Weasel. Crew plays phone missions to grow the pot; the Weasel drains it.
-// After each mission everyone takes a quiz about the Weasel. Lowest crew score is out.
-// Final round: best quiz score wins the pot, then the Weasel is unmasked.
+// Inside Job (internal id: weasel) — a hidden-saboteur game.
+// One secret Spy. Crew plays phone missions to grow the pot; the Spy drains it.
+// After each mission everyone takes a quiz about the Spy. Lowest crew score is out.
+// Final round: best quiz score wins the pot, then the Spy is unmasked.
 
 const { shuffle } = require('../util');
 const { TRIVIA, SYNC, ESTIMATE } = require('../weasel-content');
@@ -241,22 +241,22 @@ function resolveMission(room) {
 
 function factQuestion(f) {
   if (f.type === 'trivia') return {
-    q: `Mission ${f.round} (Brain Trust): Did the Weasel get the trivia right?`,
+    q: `Mission ${f.round} (Brain Trust): Did the Spy get the trivia right?`,
     options: ['Yes', 'No', 'Didn’t answer'],
     correct: () => (!f.answered ? 2 : f.correct ? 0 : 1)
   };
   if (f.type === 'sync') return {
-    q: `Mission ${f.round} (Mind Meld — “${f.prompt}”): What did the Weasel pick?`,
+    q: `Mission ${f.round} (Mind Meld — “${f.prompt}”): What did the Spy pick?`,
     options: [...f.options, 'Didn’t answer'],
     correct: () => (f.pick === null ? f.options.length : f.pick)
   };
   if (f.type === 'estimate') return {
-    q: `Mission ${f.round} (Ballpark): The Weasel’s guess was…`,
+    q: `Mission ${f.round} (Ballpark): The Spy’s guess was…`,
     options: ['Too high', 'Too low', 'Within 10%', 'Didn’t answer'],
     correct: () => ({ high: 0, low: 1, close: 2 }[f.rel] ?? 3)
   };
   return {
-    q: `Mission ${f.round} (The Vault): Was the Weasel on the vault team?`,
+    q: `Mission ${f.round} (The Vault): Was the Spy on the vault team?`,
     options: ['Yes', 'No'],
     correct: () => (f.onTeam ? 0 : 1)
   };
@@ -267,23 +267,23 @@ function identityQuestions(r) {
   const qs = [];
   const first = name.trim().charAt(0).toUpperCase();
   if (/[A-Z]/.test(first)) qs.push({
-    q: 'The Weasel’s name starts with a letter from…',
+    q: 'The Spy’s name starts with a letter from…',
     options: ['A to M', 'N to Z'],
     correct: () => (first <= 'M' ? 0 : 1)
   });
   const len = name.replace(/[^A-Za-z]/g, '').length;
   qs.push({
-    q: 'How many letters are in the Weasel’s name?',
+    q: 'How many letters are in the Spy’s name?',
     options: ['1–4', '5–6', '7 or more'],
     correct: () => (len <= 4 ? 0 : len <= 6 ? 1 : 2)
   });
   qs.push({
-    q: 'Did the Weasel host this game?',
+    q: 'Did the Spy host this game?',
     options: ['Yes', 'No'],
     correct: () => (r.startHostId === r.weaselId ? 0 : 1)
   });
   qs.push({
-    q: 'Did the Weasel join the room before or after you?',
+    q: 'Did the Spy join the room before or after you?',
     options: ['Before me', 'After me'],
     correct: (pid) => (r.joinOrder.indexOf(r.weaselId) < r.joinOrder.indexOf(pid) ? 0 : 1)
   });
@@ -304,7 +304,7 @@ function startQuiz(room) {
   r.alive.forEach(pid => {
     const optionIds = shuffle(r.alive.filter(id => id !== pid));
     const who = {
-      q: 'Who is the Weasel?',
+      q: 'Who is the Spy?',
       options: optionIds.map(id => r.names[id]),
       correct: optionIds.indexOf(r.weaselId)
     };
