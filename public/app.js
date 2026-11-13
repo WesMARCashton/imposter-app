@@ -35,8 +35,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'THE WEASEL', offmap: 'OFF THE MAP' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'The Weasel', offmap: 'Off the Map' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'OFF THE MAP' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'Off the Map' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -158,7 +158,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'Social deduction party games: Undercover, The Weasel, Off the Map. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: 'Social deduction party games: Undercover, Inside Job, Off the Map. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } })
@@ -297,7 +297,7 @@
       children.push(el('div', { class: 'stack top' }, [
         !canStart ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
         el('button', {
-          class: 'primary', id: 'start-btn', text: 'Start The Weasel',
+          class: 'primary', id: 'start-btn', text: 'Start Inside Job',
           onclick: () => socket.emit('start_game', { code: state.code, playerId: state.playerId }, (res) => {
             if (res && !res.ok) { state.error = res.error; render(); }
           })

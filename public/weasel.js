@@ -1,4 +1,4 @@
-// The Weasel — client views. Plugs into window.App from app.js.
+// Inside Job (internal id: weasel) — client views. Plugs into window.App from app.js.
 (function () {
   const A = window.App;
   const { el, socket } = A;
@@ -60,9 +60,9 @@
     card.appendChild(hint);
     card.appendChild(el('div', { class: 'content blank' }, [el('div', { class: 'role-word', text: '?' })]));
     card.appendChild(el('div', { class: 'content secret' }, [
-      svgBox(isW ? WEASEL_SVG : CREW_SVG, 'role-logo'),
-      el('div', { class: 'role-label' + (isW ? ' weasel' : ' crew'), text: isW ? 'YOU ARE THE WEASEL' : 'YOU ARE CREW' }),
-      el('div', { class: 'role-desc', text: isW ? 'Drain the pot. Don’t get caught.' : 'Grow the pot. Find the Weasel.' })
+      svgBox(isW ? (A.SPY_SVG || WEASEL_SVG) : CREW_SVG, 'role-logo'),
+      el('div', { class: 'role-label' + (isW ? ' weasel' : ' crew'), text: isW ? 'YOU ARE THE SPY' : 'YOU ARE CREW' }),
+      el('div', { class: 'role-desc', text: isW ? 'Drain the pot. Don’t get caught.' : 'Grow the pot. Find the Spy.' })
     ]));
     const startPeek = (e) => { e.preventDefault(); card.classList.add('peeking'); hint.textContent = 'Release to hide'; };
     const endPeek = () => { card.classList.remove('peeking'); hint.textContent = 'Press and hold to peek'; };
@@ -101,7 +101,7 @@
     return [
       el('div', { class: 'card-reveal' }, [
         A.buildPeekCard(),
-        el('p', { text: 'One of you is the Weasel. Keep your role to yourself. You can check it anytime.' }),
+        el('p', { text: 'One of you is the Spy. Keep your role to yourself. You can check it anytime.' }),
         ctx.isHost ? hostBtn('Start Mission 1') : note('Waiting for the host to start.')
       ])
     ];
@@ -211,7 +211,7 @@
     } else if (!W.quiz || W.quizRound !== r.roundNum) {
       out.push(note('Loading quiz…'));
     } else {
-      out.push(el('h2', { text: 'How well do you know the Weasel?' }));
+      out.push(el('h2', { text: 'How well do you know the Spy?' }));
       out.push(el('p', { text: r.isFinalRound ? 'Top score wins the pot. Ties go to the faster finisher.' : (r.eliminations ? 'Lowest score is out. Ties go to the faster finisher.' : 'Points add up. Ties go to the faster finisher.') }));
       W.quiz.questions.forEach((q, qi) => {
         out.push(el('div', { class: 'w-q' }, [
@@ -236,9 +236,9 @@
 
   PHASES.quiz_done = (room, r, ctx) => [
     el('h1', { text: 'Quizzes are in.' }),
-    el('p', { text: r.isFinalRound ? 'Time to crown a winner and unmask the Weasel.' : (r.eliminations ? 'Everyone look at your own phone. The host reveals together.' : 'Scores banked. On to the next mission.') }),
+    el('p', { text: r.isFinalRound ? 'Time to crown a winner and unmask the Spy.' : (r.eliminations ? 'Everyone look at your own phone. The host reveals together.' : 'Scores banked. On to the next mission.') }),
     el('div', { class: 'spacer' }),
-    ctx.isHost ? hostBtn(r.isFinalRound ? 'Unmask the Weasel' : (r.eliminations ? 'Reveal' : 'Continue')) : note('Waiting for the host.')
+    ctx.isHost ? hostBtn(r.isFinalRound ? 'Unmask the Spy' : (r.eliminations ? 'Reveal' : 'Continue')) : note('Waiting for the host.')
   ];
 
   PHASES.elimination = (room, r, ctx) => {
@@ -261,16 +261,16 @@
   PHASES.final = (room, r, ctx) => {
     const f = r.final;
     const iAmWeasel = f.weaselId === ctx.me;
-    const out = [svgBox(WEASEL_SVG, 'w-final-logo')];
-    out.push(el('div', { class: 'w-kicker center', text: 'The Weasel was' }));
+    const out = [svgBox(A.SPY_SVG || WEASEL_SVG, 'w-final-logo')];
+    out.push(el('div', { class: 'w-kicker center', text: 'The Spy was' }));
     out.push(el('h1', { class: 'center', text: f.weaselName + (iAmWeasel ? ' (you)' : '') }));
-    if (f.endReason === 'weasel_left') out.push(note('The Weasel left the game.'));
+    if (f.endReason === 'weasel_left') out.push(note('The Spy left the game.'));
     if (f.endReason === 'no_crew') out.push(note('No crew left standing.'));
 
     const pct = f.maxPot ? Math.round((f.pot / f.maxPot) * 100) : 0;
     out.push(el('div', { class: 'result-banner ' + (f.winnerId ? 'civ' : 'imp') }, [
       el('h2', { text: f.winnerName ? `${f.winnerName} wins ${money(f.pot)}` : `Pot: ${money(f.pot)}` }),
-      el('p', { style: 'margin-bottom:0', text: `Crew banked ${pct}% of a possible ${money(f.maxPot)}. The Weasel cost them ${money(f.maxPot - f.pot)}.` })
+      el('p', { style: 'margin-bottom:0', text: `Crew banked ${pct}% of a possible ${money(f.maxPot)}. The Spy cost them ${money(f.maxPot - f.pot)}.` })
     ]));
 
     if (f.standings.length) {
