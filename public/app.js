@@ -35,8 +35,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'OFF THE MAP' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'Off the Map' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -158,7 +158,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'Social deduction party games: Undercover, Inside Job, Off the Map. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: 'Social deduction party games: Undercover, Inside Job, The Weasel. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } })
@@ -315,7 +315,7 @@
       });
       children.push(tabs);
       children.push(el('div', { style: 'height:18px' }));
-      children.push(startBtn('Start Off the Map'));
+      children.push(startBtn('Start The Weasel'));
     } else if (isHost) {
       const s = room.settings;
       const settingsBox = el('div', {});
