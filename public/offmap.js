@@ -11,7 +11,7 @@
   <circle cx="60" cy="50" r="11" fill="#142033"/>
 </svg>`;
   const SPY_SVG = `
-<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="Spy">
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="Weasel">
   <circle cx="60" cy="60" r="57" fill="#2A0F12" stroke="#C24949" stroke-width="4"/>
   <path d="M30 52 L40 30 Q60 24 80 30 L90 52 Z" fill="#C24949"/>
   <rect x="24" y="50" width="72" height="7" rx="3.5" fill="#C24949"/>
@@ -43,7 +43,7 @@
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });
 
-  // Role card: identical layout for Spy and crew.
+  // Role card: identical layout for Weasel and crew.
   A.buildOffmapCard = function (role) {
     const card = el('div', { class: 'card' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -51,8 +51,8 @@
     card.appendChild(hint);
     card.appendChild(el('div', { class: 'content blank' }, [el('div', { class: 'role-word', text: '?' })]));
     card.appendChild(el('div', { class: 'content secret' }, [
-      svgBox(role.spy ? SPY_SVG : PIN_SVG, 'role-logo'),
-      el('div', { class: 'role-label' + (role.spy ? ' weasel' : ' om'), text: role.spy ? 'YOU ARE THE SPY' : 'LOCATION' }),
+      svgBox(role.spy ? (A.WEASEL_SVG || SPY_SVG) : PIN_SVG, 'role-logo'),
+      el('div', { class: 'role-label' + (role.spy ? ' weasel' : ' om'), text: role.spy ? 'YOU ARE THE WEASEL' : 'LOCATION' }),
       el('div', { class: 'role-word', text: role.spy ? '???' : role.location }),
       el('div', { class: 'category-tag', text: role.spy ? 'Figure out where everyone is.' : 'Your job: ' + role.job })
     ]));
@@ -104,7 +104,7 @@
     if (!A.state.myRole) return [note('Dealing locations…')];
     return [el('div', { class: 'card-reveal' }, [
       A.buildPeekCard(),
-      el('p', { text: 'Everyone shares one location except the Spy. Don’t say it out loud.' }),
+      el('p', { text: 'Everyone shares one location except the Weasel. Don’t say it out loud.' }),
       ctx.isHost ? hostBtn('Start Questions') : note('Waiting for the host to start.')
     ])];
   };
@@ -115,7 +115,7 @@
     const timer = remainingText(r);
     if (timer) out.push(el('div', { class: 'timer om-timer', id: 'om-timer', text: timer }));
     out.push(el('h2', { text: `${r.firstAskerName}${r.firstAskerId === ctx.me ? ' (you)' : ''} asks first.` }));
-    out.push(el('p', { text: 'Ask one player a question about the location. Whoever answers asks next. Too vague and you look like the Spy; too specific and the Spy figures it out.' }));
+    out.push(el('p', { text: 'Ask one player a question about the location. Whoever answers asks next. Too vague and you look like the Weasel; too specific and the Weasel figures it out.' }));
     if (isSpy && O.guessMode) {
       out.push(el('div', { class: 'om-guess-banner', text: 'Tap the location you think it is. One shot.' }));
       out.push(locationGrid(r, { guess: true }));
@@ -141,8 +141,8 @@
       }, [el('span', { text: p.name }), O.vote === p.id ? el('span', { class: 'count', text: 'Your vote' }) : null]));
     });
     return [
-      el('h2', { text: 'Who is the Spy?' }),
-      el('p', { text: voted ? 'Vote cast. You can still change it until everyone has voted.' : 'Tap a player. A tie means the Spy escapes.' }),
+      el('h2', { text: 'Who is the Weasel?' }),
+      el('p', { text: voted ? 'Vote cast. You can still change it until everyone has voted.' : 'Tap a player. A tie means the Weasel escapes.' }),
       grid,
       el('div', { class: 'progress-pill', text: `${r.votedIds.length}/${room.players.length} voted` }),
       el('div', { class: 'spacer' }),
@@ -158,19 +158,19 @@
       locationGrid(r, { guess: true })
     ];
     return [
-      el('h2', { text: `${r.accusedName} was the Spy!` }),
+      el('h2', { text: `${r.accusedName} was the Weasel!` }),
       el('p', { text: 'They get one guess at the location to steal the win. Hang tight.' })
     ];
   };
 
   const REASONS = {
-    tie: 'The vote tied. The Spy slipped away.',
-    wrong_vote: (res) => `You voted out ${res.accusedName}, who wasn’t the Spy.`,
-    caught: (res) => `Spy caught, and they guessed ${res.spyGuess}. Wrong.`,
-    caught_but_guessed: 'Spy caught, but they named the location and stole the win.',
-    spy_called_it: 'The Spy named the location before the vote.',
-    spy_guessed_wrong: (res) => `The Spy guessed ${res.spyGuess} and got it wrong.`,
-    spy_left: 'The Spy left the game.',
+    tie: 'The vote tied. The Weasel slipped away.',
+    wrong_vote: (res) => `You voted out ${res.accusedName}, who wasn’t the Weasel.`,
+    caught: (res) => `Weasel caught, and they guessed ${res.spyGuess}. Wrong.`,
+    caught_but_guessed: 'Weasel caught, but they named the location and stole the win.',
+    spy_called_it: 'The Weasel named the location before the vote.',
+    spy_guessed_wrong: (res) => `The Weasel guessed ${res.spyGuess} and got it wrong.`,
+    spy_left: 'The Weasel left the game.',
     no_crew: 'Not enough players left.'
   };
 
@@ -185,13 +185,14 @@
     ])));
     return [
       el('div', { class: 'result-banner ' + (spyWon ? 'imp' : 'civ') }, [
-        el('h2', { text: spyWon ? 'The Spy wins' : 'Crew wins' }),
+        el('h2', { text: spyWon ? 'The Weasel wins' : 'Crew wins' }),
         el('p', { style: 'margin-bottom:0', text: reason })
       ]),
+      svgBox(A.WEASEL_SVG || SPY_SVG, 'w-final-logo om-final-logo'),
       el('div', { class: 'om-answer' }, [
         el('div', { class: 'label-sm', text: 'The location was' }),
         el('div', { class: 'om-answer-loc', text: res.location }),
-        el('div', { class: 'muted', text: `Spy: ${res.spyName}${res.spyId === ctx.me ? ' (you)' : ''}` })
+        el('div', { class: 'muted', text: `The Weasel: ${res.spyName}${res.spyId === ctx.me ? ' (you)' : ''}` })
       ]),
       list,
       el('div', { class: 'spacer' }),

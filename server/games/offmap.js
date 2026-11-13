@@ -1,5 +1,5 @@
-// Off the Map — everyone shares a secret location and gets a job there, except the Spy.
-// Players question each other. Vote out the Spy before they figure out where you are.
+// Off the Map — everyone shares a secret location and gets a job there, except the Weasel.
+// Players question each other. Vote out the Weasel before they figure out where you are.
 
 const { shuffle } = require('../util');
 const { LOCATIONS } = require('../offmap-content');
@@ -17,12 +17,27 @@ function sanitizeSettings(s) {
 }
 const socketOf = (room, id) => { const p = room.players.find(x => x.id === id); return p && p.socketId; };
 
+// Weighted random pick: each time you were the Weasel in the last 4 games cuts your odds by 60%.
+// Nobody is ever ruled out, so being picked recently doesn't clear you.
+function pickSpy(room, ids) {
+  const recent = room.offmapRecentSpies || [];
+  const weights = ids.map(id => Math.pow(0.4, recent.filter(x => x === id).length));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < ids.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return ids[i];
+  }
+  return ids[ids.length - 1];
+}
+
 function start(room) {
   const ids = room.players.map(p => p.id);
-  const spyId = shuffle(ids)[0];
+  const spyId = pickSpy(room, ids);
   const pool = LOCATIONS.filter(l => l.name !== room.lastOffmapLocation);
   const loc = pool[Math.floor(Math.random() * pool.length)];
   room.lastOffmapLocation = loc.name;
+  room.offmapRecentSpies = [...(room.offmapRecentSpies || []), spyId].slice(-4);
 
   const jobs = {};
   let deck = shuffle(loc.jobs);
@@ -156,7 +171,7 @@ function publicState(room) {
       location: r.location,
       spyGuess: r.spyGuess || null,
       accusedName: r.accusedId ? r.names[r.accusedId] : null,
-      roles: Object.keys(r.names).map(id => ({ id, name: r.names[id], job: id === r.spyId ? 'SPY' : r.jobs[id], votes: (r.voteCounts || {})[id] || 0 }))
+      roles: Object.keys(r.names).map(id => ({ id, name: r.names[id], job: id === r.spyId ? 'WEASEL' : r.jobs[id], votes: (r.voteCounts || {})[id] || 0 }))
     };
   }
   return s;

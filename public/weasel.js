@@ -35,6 +35,7 @@
   <path d="M47 60 L56 69 L74 50" fill="none" stroke="#14171C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+  A.WEASEL_SVG = WEASEL_SVG;
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
   const fmt = (n) => Number(n).toLocaleString('en-US');
