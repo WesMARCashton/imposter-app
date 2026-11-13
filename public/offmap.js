@@ -1,4 +1,4 @@
-// Off the Map — client views. Plugs into window.App from app.js.
+// The Weasel (internal id: offmap) — client views. Plugs into window.App from app.js.
 (function () {
   const A = window.App;
   const { el, socket } = A;

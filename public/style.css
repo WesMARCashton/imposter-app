@@ -315,8 +315,8 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 
 /* ---------- Off the Map ---------- */
 .brand .dot.offmap {
-  background: radial-gradient(circle at 35% 30%, #B9D6FF, #4A8FE7 60%, #1d3f6e 100%);
-  box-shadow: 0 0 14px 2px rgba(74,143,231,0.55);
+  background: radial-gradient(circle at 35% 30%, #E9C29E, #9A5B2E 60%, #4a2a14 100%);
+  box-shadow: 0 0 14px 2px rgba(154,91,46,0.6);
 }
 .card .role-label.om { color: #4A8FE7; font-weight: 700; }
 .om-timer { margin: 0 0 18px; font-size: 44px; }

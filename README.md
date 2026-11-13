@@ -1,4 +1,4 @@
-# Undercover + Inside Job + Off the Map
+# Undercover + Inside Job + The Weasel
 
 Three local multiplayer social deduction games. Host picks the game in the lobby. Everyone plays from their own phone, in the same room.
 
@@ -25,7 +25,8 @@ Host settings: missions (2–8), eliminations on/off. Content lives in `server/w
 
 Code layout: `server/games/weasel.js` (game logic), `public/weasel.js` (screens). Undercover logic is unchanged in `server/index.js` / `public/app.js`.
 
-## Off the Map
+## The Weasel
+Internal id is `offmap` (files, settings, socket events).
 Everyone gets the same secret location and a job there, except the Weasel (min 3 players).
 Players take turns asking each other questions. Everyone sees the 30 possible locations and can cross them off.
 - The Weasel can guess the location at any time: right = Weasel wins, wrong = crew wins.

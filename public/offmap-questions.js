@@ -1,4 +1,4 @@
-// Off the Map — question deck. Every question must work at ANY location
+// The Weasel (internal id: offmap) — question deck. Every question must work at ANY location
 // and be answerable without naming the location outright.
 window.OFFMAP_QUESTIONS = [
   // Why you're here
