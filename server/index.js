@@ -6,6 +6,7 @@ const { CATEGORY_LABELS, pickWordPair } = require('./words');
 const { shuffle: fisherYatesShuffle, genId } = require('./util');
 const weasel = require('./games/weasel');
 const offmap = require('./games/offmap');
+const amongus = require('./games/amongus');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,7 +14,8 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 weasel.init(io);
 offmap.init(io, (code) => broadcastRoom(code));
-const MODULES = { weasel, offmap };
+amongus.init(io);
+const MODULES = { weasel, offmap, amongus };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -63,6 +65,8 @@ function broadcastRoom(code) {
   const room = rooms[code];
   if (!room) return;
   io.to(code).emit('room_update', publicRoom(room));
+  const mod = moduleOf(room);
+  if (mod && mod.syncPrivate) mod.syncPrivate(room);
 }
 
 function findRoomByPlayer(playerId) {
@@ -81,7 +85,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -141,6 +145,7 @@ io.on('connection', (socket) => {
     if (GAMES.includes(settings.game)) room.settings.game = settings.game;
     if (settings.weasel) room.settings.weasel = weasel.sanitizeSettings(settings.weasel);
     if (settings.offmap) room.settings.offmap = offmap.sanitizeSettings(settings.offmap);
+    if (settings.amongus) room.settings.amongus = amongus.sanitizeSettings(settings.amongus);
     const maxImposters = Math.max(1, Math.floor(room.players.length / 3));
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
@@ -274,6 +279,27 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || !room.round || room.round.game !== 'weasel') return;
     weasel.submitQuiz(room, playerId, answers);
+    broadcastRoom(code);
+  });
+
+  // ---- Among Us ----
+  const auRoom = (code) => { const room = rooms[code]; return room && room.round && room.round.game === 'amongus' ? room : null; };
+  socket.on('au_advance', ({ code, playerId }) => {
+    const room = auRoom(code);
+    if (!room || room.hostId !== playerId) return;
+    amongus.advance(room);
+    broadcastRoom(code);
+  });
+  socket.on('au_move', ({ code, playerId, to }) => {
+    const room = auRoom(code);
+    if (!room) return;
+    amongus.move(room, playerId, to);
+    broadcastRoom(code);
+  });
+  socket.on('au_task', ({ code, playerId, taskId }) => {
+    const room = auRoom(code);
+    if (!room) return;
+    amongus.completeTask(room, playerId, taskId);
     broadcastRoom(code);
   });
 
