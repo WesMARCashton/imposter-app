@@ -369,3 +369,96 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 .help-list li { line-height: 1.45; font-size: 15px; color: var(--text); }
 .help-list li.sub { list-style: circle; margin-left: 14px; color: var(--muted); font-size: 14px; }
 .help-sheet > .primary { margin-top: 22px; width: 100%; }
+
+/* ---------- Among Us ---------- */
+.brand .dot.amongus {
+  background: radial-gradient(circle at 35% 30%, #F2A3A3, #C24949 60%, #5a1717 100%);
+  box-shadow: 0 0 14px 2px rgba(194,73,73,0.5);
+}
+.au-taskbar { margin: -10px 0 18px; }
+.au-taskbar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.04em; }
+.au-taskbar-track { height: 12px; background: var(--surface-2); border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.au-taskbar-fill { height: 100%; background: var(--safe); transition: width 0.4s ease; }
+.au-where { text-align: center; margin-bottom: 14px; }
+.au-where h1 { margin: 2px 0 4px; }
+.au-with { color: var(--muted); font-size: 14px; }
+.au-map { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 78px); gap: 8px; margin: 14px 0 18px; }
+.au-room {
+  position: relative; border-radius: 12px; padding: 6px; font-size: 13px; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line);
+}
+.au-room.here { background: var(--amber-dim); border: 2px solid var(--amber); }
+.au-room.adj { border: 1px solid var(--amber); }
+.au-room.far { opacity: 0.45; }
+.au-room:disabled { cursor: default; }
+.au-you { font-size: 10px; color: var(--amber); letter-spacing: 0.1em; }
+.au-room-tasks { color: var(--safe); font-size: 16px; line-height: 1; letter-spacing: 2px; }
+.au-tasklist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.au-task-row { display: flex; justify-content: space-between; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.au-task-row.done { opacity: 0.5; text-decoration: line-through; }
+.au-task-row .muted { color: var(--muted); font-size: 13px; }
+
+.au-task-overlay { position: fixed; inset: 0; z-index: 150; background: rgba(5,6,8,0.85); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.au-task-box { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; width: 100%; max-width: 440px; padding: 18px; box-sizing: border-box; }
+.au-task-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.au-task-head h2 { margin: 2px 0 0; }
+.au-task-body { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.au-task-status { min-height: 22px; text-align: center; margin-top: 12px; font-weight: 600; font-size: 14px; }
+.au-task-status.ok { color: var(--safe); }
+.au-task-status.bad { color: var(--danger); }
+
+.au-hold { position: relative; overflow: hidden; height: 160px; width: 160px; align-self: center; border-radius: 50%; border: 3px solid var(--amber); background: var(--surface); color: var(--text); font-size: 20px; font-weight: 700; user-select: none; -webkit-user-select: none; touch-action: none; }
+.au-hold span { position: relative; z-index: 1; }
+.au-hold-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: var(--amber-dim); }
+
+.au-wires { display: flex; justify-content: space-between; }
+.au-wire-col { display: flex; flex-direction: column; gap: 14px; }
+.au-wire-gap { flex: 1; }
+.au-wire { width: 84px; height: 34px; border-radius: 8px; border: 3px solid transparent; }
+.au-wire.picked { border-color: #fff; }
+.au-wire.done { opacity: 0.25; }
+
+.au-seq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.au-seq-btn { height: 64px; font-size: 24px; font-weight: 700; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 12px; }
+.au-seq-btn.done { background: rgba(75,158,122,0.3); border-color: var(--safe); }
+
+.au-slider { position: relative; padding: 26px 0 8px; }
+.au-slider-marker { position: absolute; top: 0; width: 4px; height: 22px; margin-left: -2px; background: var(--danger); border-radius: 2px; }
+.au-slider-marker.hit { background: var(--safe); }
+.au-range { width: 100%; }
+
+.au-swipe { position: relative; height: 70px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; touch-action: none; }
+.au-swipe-card { position: absolute; left: 4px; top: 4px; width: 90px; height: 60px; border-radius: 10px; background: var(--amber); color: #14171C; font-weight: 800; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; touch-action: none; }
+
+.au-timing { position: relative; height: 34px; background: var(--surface-2); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.au-timing-zone { position: absolute; top: 0; bottom: 0; background: rgba(75,158,122,0.5); }
+.au-timing-line { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fff; }
+.au-timing-count { text-align: center; font-weight: 700; }
+.game-tabs button, .help-tabs button { font-size: 12.5px; padding: 10px 3px; white-space: nowrap; }
+.au-ghost { background: rgba(140,150,170,0.15); border: 1px dashed var(--muted); border-radius: 10px; padding: 10px 12px; text-align: center; font-size: 14px; margin-bottom: 14px; }
+.au-alert { background: rgba(194,73,73,0.18); border: 2px solid var(--danger); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; animation: au-pulse 1.2s ease-in-out infinite; }
+@keyframes au-pulse { 50% { border-color: rgba(194,73,73,0.4); } }
+.au-alert-title { font-weight: 800; font-size: 16px; color: #F2A3A3; }
+.au-alert-ok { color: var(--safe); font-weight: 600; }
+.au-body { background: rgba(194,73,73,0.22); border: 1px solid var(--danger); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; font-weight: 600; text-align: center; }
+.au-imp { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 8px; }
+.au-imp .label-sm { margin: 0 0 2px; }
+.au-imp-note { color: var(--muted); font-size: 13px; }
+.au-sab-row { display: flex; gap: 8px; }
+.au-sab-row button { flex: 1; font-size: 12px; }
+.au-emergency { margin-top: 18px; width: 100%; background: transparent; border: 2px solid var(--danger); color: var(--danger); font-weight: 800; letter-spacing: 0.05em; }
+.au-emergency:disabled { opacity: 0.4; }
+.au-meeting-head { border-radius: 14px; padding: 16px; margin-bottom: 12px; text-align: center; }
+.au-meeting-head h2 { margin: 6px 0; }
+.au-meeting-head.body { background: rgba(194,73,73,0.22); border: 1px solid var(--danger); }
+.au-meeting-head.emergency { background: rgba(232,178,58,0.15); border: 1px solid var(--amber); }
+.au-meeting-kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #F2A3A3; }
+.au-meeting-head.emergency .au-meeting-kicker { color: var(--amber); }
+.vote-option.au-dead { opacity: 0.4; text-decoration: line-through; cursor: default; }
+.au-eject { text-align: center; padding: 40px 10px 20px; display: flex; flex-direction: column; gap: 10px; }
+.au-eject-name { font-family: var(--font-display); font-size: 30px; font-weight: 700; }
+.au-eject-verdict { font-size: 20px; font-weight: 700; }
+.au-eject-verdict.imp { color: var(--danger); }
+.au-eject-verdict.crew { color: var(--safe); }
+.au-eject .muted { color: var(--muted); }

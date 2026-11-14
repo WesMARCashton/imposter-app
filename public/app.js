@@ -35,8 +35,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -58,6 +58,7 @@
     const role = state.myRole;
     if (role && role.game === 'weasel' && window.App.buildWeaselCard) return window.App.buildWeaselCard(role);
     if (role && role.game === 'offmap' && window.App.buildOffmapCard) return window.App.buildOffmapCard(role);
+    if (role && role.game === 'amongus' && window.App.buildAmongUsCard) return window.App.buildAmongUsCard(role);
     const card = el('div', { class: 'card' });
     const lamp = el('div', { class: 'lamp' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -251,7 +252,7 @@
     children.push(list);
 
     const game = currentGame();
-    const minPlayers = game === 'weasel' ? 4 : 3;
+    const minPlayers = (game === 'weasel' || game === 'amongus') ? 4 : 3;
     const startBtn = (label) => el('div', { class: 'stack top' }, [
       room.players.length < minPlayers ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
       el('button', {
@@ -311,6 +312,27 @@
         }),
         el('div', { class: 'error-text', text: state.error })
       ]));
+    } else if (isHost && game === 'amongus') {
+      const au = room.settings.amongus || { impostors: 0, tasks: 5, killCooldown: 30 };
+      const set = (patch) => updateSettings({ amongus: { ...au, ...patch } });
+      const tabRow = (label, sub, options, current, key) => {
+        children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: label }), sub ? el('div', { class: 'sub', text: sub }) : null])]));
+        const tabs = el('div', { class: 'diff-tabs' });
+        options.forEach(([v, t]) => tabs.appendChild(el('button', { class: v === current ? 'active' : '', text: t, onclick: () => set({ [key]: v }) })));
+        children.push(tabs);
+        children.push(el('div', { style: 'height:14px' }));
+      };
+      tabRow('Impostors', 'Auto = 1 for 4\u20136 players, 2 for 7\u20138', [[0, 'Auto'], [1, '1'], [2, '2'], [3, '3']], au.impostors, 'impostors');
+      children.push(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Tasks per player' })]),
+        el('div', { class: 'stepper' }, [
+          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ tasks: Math.max(3, au.tasks - 1) }) }),
+          el('span', { class: 'val', text: au.tasks }),
+          el('button', { class: 'secondary small', text: '+', onclick: () => set({ tasks: Math.min(8, au.tasks + 1) }) })
+        ])
+      ]));
+      tabRow('Kill cooldown', 'Seconds an Impostor waits between kills', [[15, '15s'], [30, '30s'], [45, '45s'], [60, '60s']], au.killCooldown, 'killCooldown');
+      children.push(startBtn('Start Among Us'));
     } else if (isHost && game === 'offmap') {
       const om = room.settings.offmap || { minutes: 8 };
       children.push(el('div', { class: 'settings-row' }, [
@@ -583,6 +605,7 @@
     if (!room.round) return 'lobby';
     if (room.round.game === 'weasel') return 'weasel';
     if (room.round.game === 'offmap') return 'offmap';
+    if (room.round.game === 'amongus') return 'amongus';
     return room.round.phase || 'reveal';
   }
 
