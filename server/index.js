@@ -14,7 +14,7 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 weasel.init(io);
 offmap.init(io, (code) => broadcastRoom(code));
-amongus.init(io);
+amongus.init(io, (code) => broadcastRoom(code));
 const MODULES = { weasel, offmap, amongus };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
@@ -302,6 +302,18 @@ io.on('connection', (socket) => {
     amongus.completeTask(room, playerId, taskId);
     broadcastRoom(code);
   });
+  const auAction = (ev, fn) => socket.on(ev, (data) => {
+    const room = auRoom(data && data.code);
+    if (!room) return;
+    fn(room, data);
+    broadcastRoom(data.code);
+  });
+  auAction('au_kill', (room, d) => amongus.kill(room, d.playerId, d.targetId));
+  auAction('au_report', (room, d) => amongus.report(room, d.playerId));
+  auAction('au_emergency', (room, d) => amongus.emergency(room, d.playerId));
+  auAction('au_vote', (room, d) => amongus.vote(room, d.playerId, d.target));
+  auAction('au_sabotage', (room, d) => amongus.sabotage(room, d.playerId, d.type));
+  auAction('au_fix', (room, d) => amongus.fixSabotage(room, d.playerId));
 
   // ---- Off the Map ----
   socket.on('om_advance', ({ code, playerId }) => {
@@ -329,6 +341,7 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.hostId !== playerId) return;
     if (room.round && room.round.timer) clearTimeout(room.round.timer);
+    if (moduleOf(room) && moduleOf(room).cleanup) moduleOf(room).cleanup(room);
     room.phase = 'lobby';
     room.round = null;
     broadcastRoom(code);
@@ -361,6 +374,7 @@ io.on('connection', (socket) => {
       });
     }
     if (room.round && room.round.timer) clearTimeout(room.round.timer);
+    if (moduleOf(room) && moduleOf(room).cleanup) moduleOf(room).cleanup(room);
     delete rooms[code];
   });
 

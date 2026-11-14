@@ -1,4 +1,4 @@
-// Among Us (phone version) — client. Plugs into window.App from app.js.
+// Among Us (phone version) \u2014 client. Plugs into window.App from app.js.
 (function () {
   const A = window.App;
   const { el, socket } = A;
@@ -27,6 +27,9 @@
 
   socket.on('au_you', (me) => {
     const prevRoom = U.me && U.me.room;
+    const now = Date.now();
+    me.killReadyAt = me.killReadyIn != null ? now + me.killReadyIn : null;
+    me.sabotageReadyAt = me.sabotageReadyIn != null ? now + me.sabotageReadyIn : null;
     U.me = me;
     if (prevRoom && prevRoom !== me.room) closeTask();
     if (A.state.view === 'amongus') A.render();
@@ -45,7 +48,7 @@
       svgBox(imp ? IMP_SVG : CREW_SVG, 'role-logo'),
       el('div', { class: 'role-label' + (imp ? ' weasel' : ' om'), text: imp ? 'IMPOSTOR' : 'CREWMATE' }),
       el('div', { class: 'role-desc', text: imp ? 'Blend in. Take out the crew.' : 'Do your tasks. Find the Impostor.' }),
-      el('div', { class: 'category-tag', text: imp && role.partners.length ? 'Other Impostor: ' + role.partners.join(', ') : ' ' })
+      el('div', { class: 'category-tag', text: imp && role.partners.length ? 'Other Impostor: ' + role.partners.join(', ') : '\xa0' })
     ]));
     const startPeek = (e) => { e.preventDefault(); card.classList.add('peeking'); hint.textContent = 'Release to hide'; };
     const endPeek = () => { card.classList.remove('peeking'); hint.textContent = 'Press and hold to peek'; };
@@ -242,6 +245,27 @@
     }
   };
 
+  // ---------- timers: elements with data-deadline (local ms) count down; data-enable-at re-enables a button ----------
+  const fmtSecs = (ms) => { const s = Math.ceil(Math.max(0, ms) / 1000); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`; };
+  const serverToLocal = (r, t) => t - (r.serverNow - (U.lastRoomAt || Date.now()));
+  setInterval(() => {
+    const now = Date.now();
+    document.querySelectorAll('[data-deadline]').forEach(n => { n.textContent = fmtSecs(Number(n.dataset.deadline) - now); });
+    document.querySelectorAll('[data-enable-at]').forEach(b => {
+      const left = Number(b.dataset.enableAt) - now;
+      if (left <= 0) { if (b.disabled) { b.disabled = false; b.textContent = b.dataset.label; } }
+      else { b.disabled = true; b.textContent = `${b.dataset.label} (${fmtSecs(left)})`; }
+    });
+  }, 250);
+  socket.on('room_update', (room) => { if (room && room.round && room.round.game === 'amongus') U.lastRoomAt = Date.now(); });
+
+  function timedButton(label, enableAt, cls, onclick) {
+    const left = (enableAt || 0) - Date.now();
+    const b = el('button', { class: cls, text: left > 0 ? `${label} (${fmtSecs(left)})` : label, onclick, 'data-label': label, 'data-enable-at': String(enableAt || 0) });
+    if (left > 0) b.disabled = true;
+    return b;
+  }
+
   // ---------- screens ----------
   function taskBar(r) {
     const pct = r.taskTotal ? Math.round((r.taskDone / r.taskTotal) * 100) : 0;
@@ -265,7 +289,7 @@
       }, [
         el('span', { class: 'au-room-name', text: room.name }),
         here ? el('span', { class: 'au-you', text: 'YOU' }) : null,
-        todo[room.id] ? el('span', { class: 'au-room-tasks', text: '•'.repeat(todo[room.id]) }) : null
+        todo[room.id] ? el('span', { class: 'au-room-tasks', text: '\u2022'.repeat(todo[room.id]) }) : null
       ]);
       if (!adj && !here) tile.disabled = true;
       grid.appendChild(tile);
@@ -276,7 +300,7 @@
   const PHASES = {};
 
   PHASES.reveal = (room, r, ctx) => {
-    if (!A.state.myRole) return [note('Assigning roles…')];
+    if (!A.state.myRole) return [note('Assigning roles\u2026')];
     return [el('div', { class: 'card-reveal' }, [
       A.buildPeekCard(),
       el('p', { text: 'Keep your role secret. Everyone starts in the Cafeteria.' }),
@@ -286,14 +310,60 @@
 
   PHASES.play = (room, r, ctx) => {
     const me = U.me;
-    if (!me) return [note('Loading ship…')];
+    if (!me) return [note('Loading ship\u2026')];
     const roomName = (r.rooms.find(x => x.id === me.room) || {}).name || '';
     const out = [taskBar(r)];
+    if (!me.alive) out.push(el('div', { class: 'au-ghost', text: '\ud83d\udc7b You\u2019re dead. Stay quiet! You can still do tasks.' }));
+
+    if (r.sabotage) {
+      const sb = r.sabotage;
+      const box = el('div', { class: 'au-alert' });
+      if (sb.type === 'lights') {
+        box.appendChild(el('div', { class: 'au-alert-title', text: '\u26a1 Lights are out' }));
+        box.appendChild(el('div', { text: 'Crewmates can\u2019t see who\u2019s in their room. Fix it in Electrical.' }));
+        if (me.alive && me.room === 'electrical') box.appendChild(el('button', { class: 'primary', text: 'Fix Lights', onclick: () => emit('au_fix') }));
+      } else {
+        const dl = serverToLocal(r, sb.endsAt);
+        box.appendChild(el('div', { class: 'au-alert-title' }, [
+          el('span', { text: '\u2622 Reactor meltdown in ' }),
+          el('span', { 'data-deadline': String(dl), text: fmtSecs(dl - Date.now()) })
+        ]));
+        box.appendChild(el('div', { text: `Two players must press the scanner in the Reactor. ${sb.pressedCount}/2 so far.` }));
+        if (me.alive && me.room === 'reactor') box.appendChild(me.reactorPressed
+          ? el('div', { class: 'au-alert-ok', text: 'Your hand is on the scanner. Stay in this room!' })
+          : el('button', { class: 'primary', text: 'Press scanner', onclick: () => emit('au_fix') }));
+      }
+      out.push(box);
+    }
+
     out.push(el('div', { class: 'au-where' }, [
       el('div', { class: 'help-kicker', text: 'You are in' }),
       el('h1', { text: roomName }),
-      el('div', { class: 'au-with', text: me.occupants.length ? 'With you: ' + me.occupants.join(', ') : 'You’re alone.' })
+      el('div', { class: 'au-with', text: me.dark ? 'It\u2019s too dark to see anyone.' : (me.occupants.length ? 'With you: ' + me.occupants.join(', ') : 'You\u2019re alone.') })
     ]));
+
+    if (me.bodiesHere.length) {
+      out.push(el('div', { class: 'au-body' }, [
+        el('div', { text: '\ud83d\udc80 ' + me.bodiesHere.join(', ') + (me.bodiesHere.length > 1 ? ' are' : ' is') + ' dead here.' }),
+        me.alive ? el('button', { class: 'danger', text: 'REPORT BODY', onclick: () => emit('au_report') }) : null
+      ]));
+    }
+
+    if (me.role === 'impostor' && me.alive) {
+      const acts = el('div', { class: 'au-imp' }, [el('div', { class: 'label-sm', text: 'Actions' })]);
+      if (me.targets.length) me.targets.forEach(t => acts.appendChild(timedButton('Kill ' + t.name, me.killReadyAt, 'secondary small', () => {
+        if (confirm(`Kill ${t.name}?`)) emit('au_kill', { targetId: t.id });
+      })));
+      else acts.appendChild(el('div', { class: 'au-imp-note', text: 'No Crewmate here to kill.' }));
+      const sabRow = el('div', { class: 'au-sab-row' });
+      if (r.sabotage) sabRow.appendChild(el('div', { class: 'au-imp-note', text: 'Sabotage in progress.' }));
+      else {
+        sabRow.appendChild(timedButton('Sabotage Lights', me.sabotageReadyAt, 'secondary small', () => emit('au_sabotage', { type: 'lights' })));
+        sabRow.appendChild(timedButton('Sabotage Reactor', me.sabotageReadyAt, 'secondary small', () => emit('au_sabotage', { type: 'reactor' })));
+      }
+      acts.appendChild(sabRow);
+      out.push(acts);
+    }
     const hereTasks = me.tasks.filter(t => t.room === me.room && !t.done);
     if (hereTasks.length) {
       const row = el('div', { class: 'stack' });
@@ -304,17 +374,88 @@
     out.push(shipMap(r, me));
     const list = el('div', { class: 'au-tasklist' });
     me.tasks.forEach(t => list.appendChild(el('div', { class: 'au-task-row' + (t.done ? ' done' : '') }, [
-      el('span', { text: (t.done ? '✓ ' : '') + t.name }), el('span', { class: 'muted', text: t.roomName })
+      el('span', { text: (t.done ? '\u2713 ' : '') + t.name }), el('span', { class: 'muted', text: t.roomName })
     ])));
-    out.push(el('div', { class: 'label-sm', text: me.role === 'impostor' ? 'Fake tasks (for cover — they don’t count)' : 'Your tasks' }));
+    out.push(el('div', { class: 'label-sm', text: me.role === 'impostor' ? 'Fake tasks (for cover \u2014 they don\u2019t count)' : 'Your tasks' }));
     out.push(list);
+    if (me.alive) {
+      const blocked = r.sabotage && r.sabotage.type === 'reactor';
+      const b = el('button', { class: 'au-emergency', text: me.emergencyLeft ? (blocked ? 'Emergency Meeting (fix Reactor first)' : 'EMERGENCY MEETING') : 'Emergency Meeting used', onclick: () => { if (confirm('Call an emergency meeting?')) emit('au_emergency'); } });
+      if (!me.emergencyLeft || blocked) b.disabled = true;
+      out.push(b);
+    }
+    return out;
+  };
+
+  PHASES.meeting = (room, r, ctx) => {
+    const m = r.meeting;
+    const me = U.me || {};
+    const iVoted = m.votedIds.includes(ctx.me);
+    const canVote = me.alive && !iVoted;
+    const dl = serverToLocal(r, m.endsAt);
+    const out = [
+      el('div', { class: 'au-meeting-head ' + (m.type === 'body' ? 'body' : 'emergency') }, [
+        el('div', { class: 'au-meeting-kicker', text: m.type === 'body' ? 'DEAD BODY REPORTED' : 'EMERGENCY MEETING' }),
+        el('h2', { text: m.type === 'body' ? `${m.callerName} found ${m.victimName}\u2019s body.` : `${m.callerName} called a meeting.` }),
+        el('div', {}, [el('span', { text: 'Voting ends in ' }), el('span', { 'data-deadline': String(dl), text: fmtSecs(dl - Date.now()) })])
+      ]),
+      el('p', { text: me.alive ? (iVoted ? 'Vote locked in. Waiting for the rest.' : 'Talk it out, then vote. Skipping is allowed.') : 'You\u2019re dead. Watch, but don\u2019t talk.' })
+    ];
+    const grid = el('div', { class: 'vote-grid' });
+    m.players.forEach(p => {
+      const voted = m.votedIds.includes(p.id);
+      grid.appendChild(el('div', {
+        class: 'vote-option' + (p.alive ? '' : ' au-dead') + (U.myVote === p.id ? ' selected' : ''),
+        onclick: () => {
+          if (!canVote || !p.alive) return;
+          if (!confirm(`Vote for ${p.name}?`)) return;
+          U.myVote = p.id; emit('au_vote', { target: p.id }); A.render();
+        }
+      }, [
+        el('span', { text: (p.alive ? '' : '\ud83d\udc80 ') + p.name + (p.id === ctx.me ? ' (you)' : '') }),
+        el('span', { class: 'count', text: p.alive ? (voted ? 'voted \u2713' : '') : 'dead' })
+      ]));
+    });
+    out.push(grid);
+    if (canVote) out.push(el('button', { class: 'secondary', text: 'Skip vote', onclick: () => { U.myVote = 'skip'; emit('au_vote', { target: 'skip' }); A.render(); } }));
+    out.push(el('div', { class: 'progress-pill', text: `${m.votedIds.length}/${m.players.filter(p => p.alive).length} voted` }));
+    out.push(el('div', { class: 'spacer' }));
+    if (ctx.isHost) out.push(el('button', { class: 'secondary', text: 'Host: End Voting Now', onclick: () => emit('au_advance') }));
+    return out;
+  };
+
+  PHASES.ejected = (room, r, ctx) => {
+    const e = r.ejected;
+    const out = [];
+    if (e.id) {
+      out.push(el('div', { class: 'au-eject' }, [
+        el('div', { class: 'au-eject-name', text: `${e.name} was ejected.` }),
+        el('div', { class: 'au-eject-verdict ' + (e.wasImpostor ? 'imp' : 'crew'), text: `${e.name} was ${e.wasImpostor ? '' : 'not '}an Impostor.` }),
+        el('div', { class: 'muted', text: `${e.impostorsLeft} Impostor${e.impostorsLeft === 1 ? '' : 's'} remain${e.impostorsLeft === 1 ? 's' : ''}.` })
+      ]));
+    } else {
+      out.push(el('div', { class: 'au-eject' }, [
+        el('div', { class: 'au-eject-name', text: 'No one was ejected.' }),
+        el('div', { class: 'muted', text: e.reason === 'tie' ? 'The vote was tied.' : 'Most people skipped.' })
+      ]));
+    }
+    if (e.counts.length) {
+      const list = el('div', { class: 'role-reveal-list' });
+      e.counts.forEach(c => list.appendChild(el('div', { class: 'role-reveal-row' }, [el('span', { text: c.name }), el('span', { class: 'tag civilian', text: `${c.n} vote${c.n === 1 ? '' : 's'}` })])));
+      out.push(el('div', { class: 'label-sm', text: 'Votes' }));
+      out.push(list);
+    }
+    out.push(el('div', { class: 'spacer' }));
+    out.push(note('Everyone goes back to the Cafeteria.'));
+    if (ctx.isHost) out.push(el('button', { class: 'primary', text: 'Continue', onclick: () => emit('au_advance') }));
     return out;
   };
 
   const REASONS = {
     tasks: 'The crew finished every task.',
-    impostors_out: 'Every Impostor is gone.',
-    outnumbered: 'The Impostors outnumber the crew.'
+    impostors_out: 'Every Impostor was voted out.',
+    outnumbered: 'The Impostors equal the crew. Nobody can stop them now.',
+    meltdown: 'Nobody fixed the Reactor in time.'
   };
 
   PHASES.results = (room, r, ctx) => {
@@ -322,7 +463,7 @@
     const crewWon = res.winner === 'crew';
     const list = el('div', { class: 'role-reveal-list' });
     res.players.forEach(p => list.appendChild(el('div', { class: 'role-reveal-row' }, [
-      el('span', { text: p.name + (p.role === 'crew' ? ` · ${p.tasksDone}/${p.tasksTotal} tasks` : '') }),
+      el('span', { text: (p.alive ? '' : '\ud83d\udc80 ') + p.name + (p.role === 'crew' ? ` \xb7 ${p.tasksDone}/${p.tasksTotal} tasks` : '') }),
       el('span', { class: 'tag ' + (p.role === 'impostor' ? 'imposter' : 'civilian'), text: p.role === 'impostor' ? 'IMPOSTOR' : 'CREWMATE' })
     ])));
     return [
@@ -344,10 +485,11 @@
     const r = room && room.round;
     if (!r) return;
     if (r.phase !== 'play') closeTask();
+    if (r.phase !== 'meeting') U.myVote = null;
     const me = A.state.playerId;
     const ctx = { me, isHost: room.hostId === me };
     const container = el('div', { class: 'screen' }, [A.brand(), ...(PHASES[r.phase] || (() => []))(room, r, ctx)]);
     A.root.appendChild(container);
-    if (r.phase === 'play') A.appendPeekFab(container);
+    if (r.phase === 'play' || r.phase === 'meeting') A.appendPeekFab(container);
   };
 })();

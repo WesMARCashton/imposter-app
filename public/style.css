@@ -436,3 +436,29 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 .au-timing-line { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fff; }
 .au-timing-count { text-align: center; font-weight: 700; }
 .game-tabs button, .help-tabs button { font-size: 12.5px; padding: 10px 3px; white-space: nowrap; }
+.au-ghost { background: rgba(140,150,170,0.15); border: 1px dashed var(--muted); border-radius: 10px; padding: 10px 12px; text-align: center; font-size: 14px; margin-bottom: 14px; }
+.au-alert { background: rgba(194,73,73,0.18); border: 2px solid var(--danger); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; animation: au-pulse 1.2s ease-in-out infinite; }
+@keyframes au-pulse { 50% { border-color: rgba(194,73,73,0.4); } }
+.au-alert-title { font-weight: 800; font-size: 16px; color: #F2A3A3; }
+.au-alert-ok { color: var(--safe); font-weight: 600; }
+.au-body { background: rgba(194,73,73,0.22); border: 1px solid var(--danger); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; font-weight: 600; text-align: center; }
+.au-imp { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 8px; }
+.au-imp .label-sm { margin: 0 0 2px; }
+.au-imp-note { color: var(--muted); font-size: 13px; }
+.au-sab-row { display: flex; gap: 8px; }
+.au-sab-row button { flex: 1; font-size: 12px; }
+.au-emergency { margin-top: 18px; width: 100%; background: transparent; border: 2px solid var(--danger); color: var(--danger); font-weight: 800; letter-spacing: 0.05em; }
+.au-emergency:disabled { opacity: 0.4; }
+.au-meeting-head { border-radius: 14px; padding: 16px; margin-bottom: 12px; text-align: center; }
+.au-meeting-head h2 { margin: 6px 0; }
+.au-meeting-head.body { background: rgba(194,73,73,0.22); border: 1px solid var(--danger); }
+.au-meeting-head.emergency { background: rgba(232,178,58,0.15); border: 1px solid var(--amber); }
+.au-meeting-kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #F2A3A3; }
+.au-meeting-head.emergency .au-meeting-kicker { color: var(--amber); }
+.vote-option.au-dead { opacity: 0.4; text-decoration: line-through; cursor: default; }
+.au-eject { text-align: center; padding: 40px 10px 20px; display: flex; flex-direction: column; gap: 10px; }
+.au-eject-name { font-family: var(--font-display); font-size: 30px; font-weight: 700; }
+.au-eject-verdict { font-size: 20px; font-weight: 700; }
+.au-eject-verdict.imp { color: var(--danger); }
+.au-eject-verdict.crew { color: var(--safe); }
+.au-eject .muted { color: var(--muted); }

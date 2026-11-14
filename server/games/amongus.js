@@ -1,6 +1,5 @@
 // Among Us (phone version) — Crewmates do tasks around a virtual ship; Impostors hide among them.
-// Step 1: roles, ship map, movement, tasks, task bar, crew task win.
-// Step 2 (next): kills, bodies, report/emergency meetings, voting. Step 3: sabotage.
+// Roles, ship map, movement, tasks, kills, bodies, meetings + voting, sabotage (Lights, Reactor).
 
 const { shuffle } = require('../util');
 
@@ -44,8 +43,14 @@ const TASKS = [
 ];
 const TASK_BY_ID = Object.fromEntries(TASKS.map(t => [t.id, t]));
 
+const MEETING_SECS = 120;
+const EJECT_SECS = 8;
+const REACTOR_SECS = 45;
+const SABOTAGE_COOLDOWN = 30;
+
 let io = null;
-function init(socketIo) { io = socketIo; }
+let broadcast = () => {};
+function init(socketIo, broadcastFn) { io = socketIo; if (broadcastFn) broadcast = broadcastFn; }
 
 function defaultSettings() { return { impostors: 0, tasks: 5, killCooldown: 30 }; }
 function sanitizeSettings(s) {
@@ -85,6 +90,15 @@ function start(room) {
     pos: Object.fromEntries(ids.map(id => [id, START_ROOM])),
     alive: ids.slice(),
     tasks,
+    killReadyAt: {},
+    bodies: [],
+    emergencyUsed: {},
+    meeting: null,
+    ejected: null,
+    sabotage: null,
+    sabotageReadyAt: 0,
+    timer: null,
+    reactorTimer: null,
     result: null
   };
   room.phase = 'playing';
@@ -112,12 +126,24 @@ function progress(r) {
 function privateState(room, id) {
   const r = room.round;
   const here = r.pos[id];
+  const imp = isImp(r, id);
+  const alive = r.alive.includes(id);
+  const dark = r.sabotage && r.sabotage.type === 'lights' && !imp && alive;
+  const others = r.allIds.filter(x => x !== id && r.pos[x] === here && r.alive.includes(x));
+  const now = Date.now();
   return {
-    role: isImp(r, id) ? 'impostor' : 'crew',
-    alive: r.alive.includes(id),
+    role: imp ? 'impostor' : 'crew',
+    alive,
     room: here,
     adjacent: ADJ[here] || [],
-    occupants: r.allIds.filter(x => x !== id && r.pos[x] === here && r.alive.includes(x)).map(x => r.names[x]),
+    dark: !!dark,
+    occupants: dark ? [] : others.map(x => r.names[x]),
+    targets: imp && alive ? others.filter(x => !isImp(r, x)).map(x => ({ id: x, name: r.names[x] })) : [],
+    killReadyIn: imp ? Math.max(0, (r.killReadyAt[id] || 0) - now) : null,
+    sabotageReadyIn: imp ? Math.max(0, r.sabotageReadyAt - now) : null,
+    bodiesHere: r.bodies.filter(b => b.room === here).map(b => r.names[b.victimId]),
+    emergencyLeft: alive && !r.emergencyUsed[id],
+    reactorPressed: !!(r.sabotage && r.sabotage.type === 'reactor' && r.sabotage.pressed.includes(id)),
     tasks: (r.tasks[id] || []).map(t => {
       const def = TASK_BY_ID[t.id];
       return { id: t.id, name: def.name, room: def.room, roomName: ROOM_BY_ID[def.room].name, type: def.type, secs: def.secs, n: def.n, done: t.done };
@@ -141,9 +167,146 @@ function resendPrivate(room, id) {
   if (sid && r.allIds.includes(id)) io.to(sid).emit('au_you', privateState(room, id));
 }
 
+function resetCooldowns(r) {
+  const now = Date.now();
+  r.impostorIds.forEach(id => { r.killReadyAt[id] = now + r.settings.killCooldown * 1000; });
+  r.sabotageReadyAt = now + SABOTAGE_COOLDOWN * 1000;
+}
+
+function clearTimers(r) {
+  if (r.timer) { clearTimeout(r.timer); r.timer = null; }
+  if (r.reactorTimer) { clearTimeout(r.reactorTimer); r.reactorTimer = null; }
+}
+function cleanup(room) { if (room.round && room.round.game === 'amongus') clearTimers(room.round); }
+
 function advance(room) {
   const r = room.round;
-  if (r && r.phase === 'reveal') r.phase = 'play';
+  if (!r) return;
+  if (r.phase === 'reveal') { r.phase = 'play'; resetCooldowns(r); }
+  else if (r.phase === 'meeting') tally(room);
+  else if (r.phase === 'ejected') afterEject(room);
+}
+
+// ---------- kills & bodies ----------
+function kill(room, id, targetId) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !isImp(r, id) || !r.alive.includes(id)) return;
+  if (!r.alive.includes(targetId) || isImp(r, targetId) || r.pos[targetId] !== r.pos[id]) return;
+  if (Date.now() < (r.killReadyAt[id] || 0)) return;
+  r.alive = r.alive.filter(x => x !== targetId);
+  r.bodies.push({ victimId: targetId, room: r.pos[id] });
+  r.killReadyAt[id] = Date.now() + r.settings.killCooldown * 1000;
+  if (r.sabotage && r.sabotage.type === 'reactor') r.sabotage.pressed = r.sabotage.pressed.filter(x => x !== targetId);
+  checkWin(room);
+}
+
+function report(room, id) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !r.alive.includes(id)) return;
+  const body = r.bodies.find(b => b.room === r.pos[id]);
+  if (!body) return;
+  startMeeting(room, { type: 'body', callerId: id, victimId: body.victimId });
+}
+
+function emergency(room, id) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !r.alive.includes(id) || r.emergencyUsed[id]) return;
+  if (r.sabotage && r.sabotage.type === 'reactor') return; // can't call during a meltdown
+  r.emergencyUsed[id] = true;
+  startMeeting(room, { type: 'emergency', callerId: id });
+}
+
+// ---------- meetings ----------
+function startMeeting(room, info) {
+  const r = room.round;
+  clearTimers(r);
+  r.sabotage = null;
+  r.bodies = [];
+  r.meeting = Object.assign(info, { votes: {}, endsAt: Date.now() + MEETING_SECS * 1000 });
+  r.phase = 'meeting';
+  r.timer = setTimeout(() => {
+    if (room.round === r && r.phase === 'meeting') { tally(room); broadcast(room.code); }
+  }, MEETING_SECS * 1000);
+}
+
+function vote(room, id, target) {
+  const r = room.round;
+  if (!r || r.phase !== 'meeting' || !r.alive.includes(id) || r.meeting.votes[id]) return;
+  if (target !== 'skip' && !r.alive.includes(target)) return;
+  r.meeting.votes[id] = target;
+  if (r.alive.every(x => r.meeting.votes[x])) tally(room);
+}
+
+function tally(room) {
+  const r = room.round;
+  clearTimers(r);
+  const counts = {};
+  Object.values(r.meeting.votes).forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+  let max = 0, top = [];
+  for (const k in counts) {
+    if (counts[k] > max) { max = counts[k]; top = [k]; } else if (counts[k] === max) top.push(k);
+  }
+  let ejectedId = null;
+  if (top.length === 1 && top[0] !== 'skip') ejectedId = top[0];
+  if (ejectedId) r.alive = r.alive.filter(x => x !== ejectedId);
+  r.ejected = {
+    id: ejectedId,
+    name: ejectedId ? r.names[ejectedId] : null,
+    wasImpostor: ejectedId ? isImp(r, ejectedId) : null,
+    reason: ejectedId ? null : (top.length > 1 ? 'tie' : 'skip'),
+    impostorsLeft: r.alive.filter(x => isImp(r, x)).length,
+    counts: Object.entries(counts).map(([k, n]) => ({ name: k === 'skip' ? 'Skipped' : r.names[k], n })).sort((a, b) => b.n - a.n)
+  };
+  r.meeting = null;
+  r.phase = 'ejected';
+  r.timer = setTimeout(() => {
+    if (room.round === r && r.phase === 'ejected') { afterEject(room); broadcast(room.code); }
+  }, EJECT_SECS * 1000);
+}
+
+function afterEject(room) {
+  const r = room.round;
+  clearTimers(r);
+  r.ejected = null;
+  r.phase = 'play';
+  r.allIds.forEach(id => { r.pos[id] = START_ROOM; });
+  resetCooldowns(r);
+  checkWin(room);
+}
+
+// ---------- sabotage ----------
+function sabotage(room, id, type) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !isImp(r, id) || !r.alive.includes(id)) return;
+  if (r.sabotage || Date.now() < r.sabotageReadyAt) return;
+  if (type === 'lights') r.sabotage = { type: 'lights' };
+  else if (type === 'reactor') {
+    r.sabotage = { type: 'reactor', endsAt: Date.now() + REACTOR_SECS * 1000, pressed: [] };
+    r.reactorTimer = setTimeout(() => {
+      if (room.round === r && r.phase === 'play' && r.sabotage && r.sabotage.type === 'reactor') {
+        finish(room, 'impostors', 'meltdown');
+        broadcast(room.code);
+      }
+    }, REACTOR_SECS * 1000);
+  }
+}
+
+function fixSabotage(room, id) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !r.alive.includes(id) || !r.sabotage) return;
+  const s = r.sabotage;
+  if (s.type === 'lights' && r.pos[id] === 'electrical') endSabotage(r);
+  else if (s.type === 'reactor' && r.pos[id] === 'reactor') {
+    if (!s.pressed.includes(id)) s.pressed.push(id);
+    s.pressed = s.pressed.filter(x => r.pos[x] === 'reactor' && r.alive.includes(x));
+    if (s.pressed.length >= 2) endSabotage(r);
+  }
+}
+
+function endSabotage(r) {
+  if (r.reactorTimer) { clearTimeout(r.reactorTimer); r.reactorTimer = null; }
+  r.sabotage = null;
+  r.sabotageReadyAt = Date.now() + SABOTAGE_COOLDOWN * 1000;
 }
 
 function move(room, id, to) {
@@ -151,6 +314,7 @@ function move(room, id, to) {
   if (!r || r.phase !== 'play' || !r.allIds.includes(id)) return;
   if (!(ADJ[r.pos[id]] || []).includes(to)) return;
   r.pos[id] = to;
+  if (r.sabotage && r.sabotage.type === 'reactor') r.sabotage.pressed = r.sabotage.pressed.filter(x => x !== id);
 }
 
 function completeTask(room, id, taskId) {
@@ -176,6 +340,7 @@ function checkWin(room) {
 
 function finish(room, winner, reason) {
   const r = room.round;
+  clearTimers(r);
   r.result = { winner, reason };
   r.phase = 'results';
 }
@@ -188,7 +353,13 @@ function onPlayerRemoved(room, id) {
   r.impostorIds = r.impostorIds.filter(x => x !== id);
   delete r.tasks[id];
   delete r.pos[id];
+  if (r.meeting) {
+    delete r.meeting.votes[id];
+    Object.keys(r.meeting.votes).forEach(v => { if (r.meeting.votes[v] === id) delete r.meeting.votes[v]; });
+  }
+  r.bodies = r.bodies.filter(b => b.victimId !== id);
   checkWin(room);
+  if (r.phase === 'meeting' && r.alive.length && r.alive.every(x => r.meeting.votes[x])) tally(room);
 }
 
 function publicState(room) {
@@ -201,8 +372,23 @@ function publicState(room) {
     taskDone: p.done,
     taskTotal: p.total,
     playerCount: r.allIds.length,
+    serverNow: Date.now(),
+    sabotage: r.sabotage ? { type: r.sabotage.type, endsAt: r.sabotage.endsAt || null, pressedCount: r.sabotage.pressed ? r.sabotage.pressed.length : 0 } : null,
+    meeting: null,
+    ejected: r.phase === 'ejected' ? r.ejected : null,
     result: null
   };
+  if (r.phase === 'meeting') {
+    const m = r.meeting;
+    s.meeting = {
+      type: m.type,
+      callerName: r.names[m.callerId],
+      victimName: m.victimId ? r.names[m.victimId] : null,
+      endsAt: m.endsAt,
+      votedIds: Object.keys(m.votes),
+      players: r.allIds.map(id => ({ id, name: r.names[id], alive: r.alive.includes(id) }))
+    };
+  }
   if (r.phase === 'results') {
     s.result = {
       ...r.result,
@@ -221,5 +407,6 @@ function publicState(room) {
 
 module.exports = {
   init, defaultSettings, sanitizeSettings, start, advance, move, completeTask,
+  kill, report, emergency, vote, sabotage, fixSabotage, cleanup,
   resendPrivate, syncPrivate, onPlayerRemoved, publicState, MIN_PLAYERS, ROOMS
 };
