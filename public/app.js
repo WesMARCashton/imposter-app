@@ -122,7 +122,12 @@
       class: 'leave-btn', text: isHost ? 'End Game' : 'Leave',
       onclick: () => leaveOrEndGame(isHost)
     });
-    return el('div', { class: 'brand' }, [dot, label, el('div', { class: 'brand-spacer' }), actionBtn]);
+    const helpBtn = el('button', { class: 'leave-btn help-btn', text: '?', 'aria-label': 'How to play', onclick: () => showHelp(currentGame()) });
+    return el('div', { class: 'brand' }, [dot, label, el('div', { class: 'brand-spacer' }), helpBtn, actionBtn]);
+  }
+
+  function showHelp(selected) {
+    if (window.App.showHelp) window.App.showHelp(Object.keys(GAME_NAMES), selected);
   }
 
   function leaveOrEndGame(isHost) {
@@ -161,7 +166,8 @@
       el('p', { text: 'Social deduction party games: Undercover, Inside Job, The Weasel. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
-        el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } })
+        el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } }),
+        el('button', { class: 'ghost', text: 'How to play', onclick: () => showHelp() })
       ])
     ]);
   };
@@ -268,6 +274,7 @@
     } else {
       children.push(el('p', { class: 'center-note', text: 'Game: ' + GAME_NAMES[game] }));
     }
+    children.push(el('button', { class: 'ghost small help-link', text: `How to play ${GAME_NAMES[game]}`, onclick: () => showHelp(game) }));
 
     if (isHost && game === 'weasel') {
       const ws = room.settings.weasel || { rounds: 5, eliminations: true };
@@ -582,7 +589,7 @@
   window.addEventListener('beforeunload', () => { /* keep session for reconnect */ });
 
   // Shared toolkit for game modules (public/weasel.js)
-  window.App = { socket, state, root, el, render, brand, buildPeekCard, appendPeekFab, VIEWS };
+  window.App = { socket, state, root, el, render, brand, buildPeekCard, appendPeekFab, VIEWS, GAME_NAMES };
 
   render();
 
