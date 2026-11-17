@@ -72,13 +72,13 @@
         ['How to play', [
           'The app picks who asks first. Ask any player one question about the location.',
           'Whoever answers asks the next question. You can’t ask back the person who just asked you.',
-          'Stuck? Use the question card on your screen, or tap Skip for a new one.',
-          'Everyone sees the list of 30 possible locations. Tap to cross off ones you’ve ruled out.',
+          'Stuck? Use the question card on your screen. Skip deals a new one; Previous goes back.',
+          'Everyone sees 20 possible locations (a random mix from 60, always including the real one). Tap to cross off ones you’ve ruled out.',
           'Answers that are too vague make you look like the Weasel. Answers that are too specific give the location away.'
         ]],
         ['Ending the round', [
           'The Weasel can tap "I know where we are" at any time and guess. Right = Weasel wins. Wrong = Crew wins.',
-          'The host calls the vote, or it opens when the timer runs out. Everyone votes on who the Weasel is.',
+          'The host calls the vote, or it opens when the timer runs out. Everyone votes on who the Weasel is. Host hit it by mistake? "Back to questions" resumes the round.',
           'If the Weasel gets the most votes, they get one last guess at the location to steal the win.',
           'Wrong person voted out, or a tie = Weasel wins.'
         ]]

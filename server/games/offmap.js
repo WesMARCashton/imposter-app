@@ -6,6 +6,7 @@ const { LOCATIONS } = require('../offmap-content');
 
 const MIN_PLAYERS = 3;
 const TIMER_OPTIONS = [0, 5, 8, 10, 15];
+const BOARD_SIZE = 20; // locations shown each round (always includes the real one)
 let io = null;
 let broadcast = () => {};
 
@@ -37,6 +38,8 @@ function start(room) {
   const pool = LOCATIONS.filter(l => l.name !== room.lastOffmapLocation);
   const loc = pool[Math.floor(Math.random() * pool.length)];
   room.lastOffmapLocation = loc.name;
+  const decoys = shuffle(LOCATIONS.filter(l => l.name !== loc.name)).slice(0, BOARD_SIZE - 1);
+  const board = shuffle([loc, ...decoys]).map(l => l.name).sort((a, b) => a.localeCompare(b));
   room.offmapRecentSpies = [...(room.offmapRecentSpies || []), spyId].slice(-4);
 
   const jobs = {};
@@ -52,6 +55,8 @@ function start(room) {
     phase: 'reveal',
     spyId,
     location: loc.name,
+    board,
+    pausedRemaining: null,
     jobs,
     names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
     firstAskerId: shuffle(ids)[0],
@@ -78,18 +83,34 @@ function resendPrivate(room, id) { if (room.round) sendRole(room, id); }
 
 function clearTimer(r) { if (r.timer) { clearTimeout(r.timer); r.timer = null; } }
 
+function startTimer(room, ms) {
+  const r = room.round;
+  clearTimer(r);
+  r.endsAt = Date.now() + ms;
+  r.timer = setTimeout(() => {
+    if (room.round === r && r.phase === 'play') { r.phase = 'vote'; r.timer = null; r.pausedRemaining = 0; broadcast(room.code); }
+  }, ms);
+}
+
+// Host undo: back out of the vote and resume questions with whatever time was left.
+function cancelVote(room) {
+  const r = room.round;
+  if (!r || r.phase !== 'vote') return;
+  r.votes = {};
+  r.phase = 'play';
+  if (r.minutes && r.pausedRemaining > 0) startTimer(room, r.pausedRemaining);
+  else r.endsAt = null;
+  r.pausedRemaining = null;
+}
+
 function advance(room) {
   const r = room.round;
   if (!r) return;
   if (r.phase === 'reveal') {
     r.phase = 'play';
-    if (r.minutes) {
-      r.endsAt = Date.now() + r.minutes * 60 * 1000;
-      r.timer = setTimeout(() => {
-        if (room.round === r && r.phase === 'play') { r.phase = 'vote'; r.timer = null; broadcast(room.code); }
-      }, r.minutes * 60 * 1000);
-    }
+    if (r.minutes) startTimer(room, r.minutes * 60 * 1000);
   } else if (r.phase === 'play') {
+    r.pausedRemaining = r.endsAt ? Math.max(0, r.endsAt - Date.now()) : null;
     clearTimer(r);
     r.phase = 'vote';
   } else if (r.phase === 'vote') {
@@ -123,7 +144,7 @@ function tally(room) {
 function spyGuess(room, playerId, location) {
   const r = room.round;
   if (!r || playerId !== r.spyId || !['play', 'spy_guess'].includes(r.phase)) return;
-  if (!LOCATIONS.some(l => l.name === location)) return;
+  if (!r.board.includes(location)) return;
   r.spyGuess = location;
   const correct = location === r.location;
   if (r.phase === 'play') finish(room, correct ? 'spy' : 'crew', correct ? 'spy_called_it' : 'spy_guessed_wrong');
@@ -152,7 +173,7 @@ function publicState(room) {
   const s = {
     game: 'offmap',
     phase: r.phase,
-    locations: LOCATIONS.map(l => l.name),
+    locations: r.board,
     firstAskerId: r.firstAskerId,
     firstAskerName: r.names[r.firstAskerId],
     minutes: r.minutes,
@@ -178,6 +199,6 @@ function publicState(room) {
 }
 
 module.exports = {
-  init, defaultSettings, sanitizeSettings, start, advance, vote, spyGuess,
+  init, defaultSettings, sanitizeSettings, start, advance, cancelVote, vote, spyGuess,
   resendPrivate, onPlayerRemoved, publicState, MIN_PLAYERS, TIMER_OPTIONS
 };

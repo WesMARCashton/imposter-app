@@ -323,6 +323,13 @@ io.on('connection', (socket) => {
     broadcastRoom(code);
   });
 
+  socket.on('om_cancel_vote', ({ code, playerId }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== playerId || !room.round || room.round.game !== 'offmap') return;
+    offmap.cancelVote(room);
+    broadcastRoom(code);
+  });
+
   socket.on('om_vote', ({ code, playerId, targetId }) => {
     const room = rooms[code];
     if (!room || !room.round || room.round.game !== 'offmap') return;

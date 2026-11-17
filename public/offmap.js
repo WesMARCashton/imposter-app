@@ -1,4 +1,4 @@
-// The Weasel (internal id: offmap) — client views. Plugs into window.App from app.js.
+// The Weasel (internal id: offmap) \u2014 client views. Plugs into window.App from app.js.
 (function () {
   const A = window.App;
   const { el, socket } = A;
@@ -20,26 +20,54 @@
   <path d="M56 72 Q60 68 64 72" fill="none" stroke="#EDEEF0" stroke-width="4"/>
 </svg>`;
 
-  // Question deck: shuffled per device, no repeats until the deck runs out.
-  function nextQuestion() {
-    if (!O.deck || !O.deck.length) {
-      const q = (window.OFFMAP_QUESTIONS || []).slice();
-      for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
-      O.deck = q;
-    }
-    O.question = O.deck.pop() || null;
+  // Question deck: truly random draw from questions this device hasn't seen yet.
+  // "Seen" is remembered across games (localStorage), so repeats only come back after the whole deck is used.
+  // History lets you step back to earlier questions.
+  const SEEN_KEY = 'om_seen_questions';
+  const loadSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch (e) { return new Set(); } };
+  const saveSeen = (set) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...set])); } catch (e) { /* ignore */ } };
+  O.history = O.history || [];
+  O.hIdx = O.hIdx == null ? -1 : O.hIdx;
+
+  function drawQuestion() {
+    const all = window.OFFMAP_QUESTIONS || [];
+    if (!all.length) return null;
+    let seen = loadSeen();
+    const recent = new Set(O.history.slice(-10));
+    let pool = all.filter(q => !seen.has(q) && !recent.has(q));
+    if (!pool.length) { seen = new Set(); pool = all.filter(q => !recent.has(q)); if (!pool.length) pool = all; }
+    const buf = new Uint32Array(1);
+    (window.crypto || window.msCrypto).getRandomValues(buf);
+    const q = pool[buf[0] % pool.length];
+    seen.add(q); saveSeen(seen);
+    return q;
   }
+  function nextQuestion() {
+    if (O.hIdx < O.history.length - 1) { O.hIdx++; return; }
+    const q = drawQuestion();
+    if (!q) return;
+    O.history.push(q);
+    if (O.history.length > 200) O.history.shift();
+    O.hIdx = O.history.length - 1;
+  }
+  function prevQuestion() { if (O.hIdx > 0) O.hIdx--; }
+
   function questionCard() {
-    if (!O.question) nextQuestion();
-    if (!O.question) return null;
+    if (O.hIdx < 0) nextQuestion();
+    const q = O.history[O.hIdx];
+    if (!q) return null;
+    const back = el('button', { class: 'secondary small', text: '\u2190 Previous', onclick: () => { prevQuestion(); A.render(); } });
+    if (O.hIdx <= 0) back.disabled = true;
     return el('div', { class: 'om-qcard' }, [
       el('div', { class: 'om-qcard-label', text: 'Need a question? Ask someone:' }),
-      el('div', { class: 'om-qcard-text', text: O.question }),
-      el('button', { class: 'secondary small', text: 'Skip \u2192 New question', onclick: () => { nextQuestion(); A.render(); } })
+      el('div', { class: 'om-qcard-text', text: q }),
+      el('div', { class: 'om-qcard-actions' }, [
+        back,
+        el('button', { class: 'secondary small', text: 'Skip \u2192', onclick: () => { nextQuestion(); A.render(); } })
+      ])
     ]);
   }
 
-  A.SPY_SVG = SPY_SVG;
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });
@@ -102,10 +130,10 @@
   const PHASES = {};
 
   PHASES.reveal = (room, r, ctx) => {
-    if (!A.state.myRole) return [note('Dealing locations…')];
+    if (!A.state.myRole) return [note('Dealing locations\u2026')];
     return [el('div', { class: 'card-reveal' }, [
       A.buildPeekCard(),
-      el('p', { text: 'Everyone shares one location except the Weasel. Don’t say it out loud.' }),
+      el('p', { text: 'Everyone shares one location except the Weasel. Don\u2019t say it out loud.' }),
       ctx.isHost ? hostBtn('Start Questions') : note('Waiting for the host to start.')
     ])];
   };
@@ -123,9 +151,9 @@
       out.push(el('button', { class: 'ghost', text: 'Cancel', onclick: () => { O.guessMode = false; A.render(); } }));
     } else {
       out.push(questionCard());
-      out.push(el('div', { class: 'label-sm', text: 'Possible locations (tap to cross off)' }));
+      out.push(el('div', { class: 'label-sm', text: `Possible locations (${r.locations.length}) \u2014 tap to cross off` }));
       out.push(locationGrid(r, {}));
-      if (isSpy) out.push(el('button', { class: 'danger', text: 'I know where we are — Guess', onclick: () => { O.guessMode = true; A.render(); } }));
+      if (isSpy) out.push(el('button', { class: 'danger', text: 'I know where we are \u2014 Guess', onclick: () => { O.guessMode = true; A.render(); } }));
     }
     out.push(el('div', { class: 'spacer' }));
     if (ctx.isHost) out.push(hostBtn('Call the Vote', isSpy && O.guessMode ? 'secondary' : 'primary'));
@@ -147,14 +175,15 @@
       grid,
       el('div', { class: 'progress-pill', text: `${r.votedIds.length}/${room.players.length} voted` }),
       el('div', { class: 'spacer' }),
-      ctx.isHost ? hostBtn('Host: Tally Now', 'secondary') : null
+      ctx.isHost ? hostBtn('Host: Tally Now', 'secondary') : null,
+      ctx.isHost ? el('button', { class: 'ghost', text: '\u2190 Oops, back to questions', onclick: () => { if (confirm('Cancel the vote and go back to questions?')) socket.emit('om_cancel_vote', { code: A.state.code, playerId: A.state.playerId }); } }) : null
     ];
   };
 
   PHASES.spy_guess = (room, r, ctx) => {
     const isSpy = A.state.myRole && A.state.myRole.spy;
     if (isSpy) return [
-      el('h2', { text: 'You’ve been caught!' }),
+      el('h2', { text: 'You\u2019ve been caught!' }),
       el('p', { text: 'Last chance: name the location to steal the win.' }),
       locationGrid(r, { guess: true })
     ];
@@ -166,7 +195,7 @@
 
   const REASONS = {
     tie: 'The vote tied. The Weasel slipped away.',
-    wrong_vote: (res) => `You voted out ${res.accusedName}, who wasn’t the Weasel.`,
+    wrong_vote: (res) => `You voted out ${res.accusedName}, who wasn\u2019t the Weasel.`,
     caught: (res) => `Weasel caught, and they guessed ${res.spyGuess}. Wrong.`,
     caught_but_guessed: 'Weasel caught, but they named the location and stole the win.',
     spy_called_it: 'The Weasel named the location before the vote.',
@@ -181,7 +210,7 @@
     const spyWon = res.winner === 'spy';
     const list = el('div', { class: 'role-reveal-list' });
     res.roles.forEach(p => list.appendChild(el('div', { class: 'role-reveal-row' }, [
-      el('span', { text: p.name + (p.votes ? ` · ${p.votes} vote${p.votes === 1 ? '' : 's'}` : '') }),
+      el('span', { text: p.name + (p.votes ? ` \xb7 ${p.votes} vote${p.votes === 1 ? '' : 's'}` : '') }),
       el('span', { class: 'tag ' + (p.id === res.spyId ? 'imposter' : 'civilian'), text: p.job })
     ])));
     return [
