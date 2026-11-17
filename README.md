@@ -28,9 +28,9 @@ Code layout: `server/games/weasel.js` (game logic), `public/weasel.js` (screens)
 ## The Weasel
 Internal id is `offmap` (files, settings, socket events).
 Everyone gets the same secret location and a job there, except the Weasel (min 3 players).
-Players take turns asking each other questions. Everyone sees the 30 possible locations and can cross them off.
+Players take turns asking each other questions. Each round shows 20 possible locations (random from 60, always including the real one); players can cross them off. Question card on each phone (385 questions, no repeats until the deck is used up, Previous/Skip).
 - The Weasel can guess the location at any time: right = Weasel wins, wrong = crew wins.
-- Host calls the vote (or the timer runs out). Plurality on the Weasel = caught, then the Weasel gets one last guess to steal the win. Wrong person or a tie = Weasel wins.
+- Host calls the vote (or the timer runs out); host can undo and resume with the remaining time. Plurality on the Weasel = caught, then the Weasel gets one last guess to steal the win. Wrong person or a tie = Weasel wins.
 Host setting: round timer (off / 5 / 8 / 10 / 15 min). Weasel pick is random but weighted down for anyone who was the Weasel in the last 4 games (streak breaker). Locations and jobs live in `server/offmap-content.js`.
 
 ## Dev
