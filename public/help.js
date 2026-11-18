@@ -78,6 +78,7 @@
         ]],
         ['Ending the round', [
           'The Weasel can tap "I know where we are" at any time and guess. Right = Weasel wins. Wrong = Crew wins.',
+          'Anyone can quietly tap "Ask for a vote". When a majority of players ask, voting opens (nobody sees who asked).',
           'The host calls the vote, or it opens when the timer runs out. Everyone votes on who the Weasel is. Host hit it by mistake? "Back to questions" resumes the round.',
           'If the Weasel gets the most votes, they get one last guess at the location to steal the win.',
           'Wrong person voted out, or a tie = Weasel wins.'
