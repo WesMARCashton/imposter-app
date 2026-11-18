@@ -68,6 +68,14 @@
     ]);
   }
 
+  // Vote alert: vibrate (Android) + a full-screen flash every phone can see (iPhones don't allow vibration from the web).
+  function voteAlert() {
+    try { if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) { /* ignore */ }
+    const f = el('div', { class: 'om-flash' }, [el('div', { class: 'om-flash-text', text: '\ud83d\uddf3\ufe0f Time to vote!' })]);
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 1600);
+  }
+
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });
@@ -250,6 +258,7 @@
     const ctx = { me, isHost: room.hostId === me };
     if (r.serverNow !== O.lastServerNow) { O.lastServerNow = r.serverNow; O.skew = r.serverNow - Date.now(); }
     if (r.phase !== O.key) {
+      if (r.phase === 'vote' && O.key === 'play') voteAlert();
       if (r.phase === 'reveal') O.crossed = new Set();
       if (r.phase === 'vote') O.vote = null;
       O.requestedVote = false;
