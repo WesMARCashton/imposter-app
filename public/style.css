@@ -468,3 +468,6 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 .om-request-btn { background: var(--surface); color: var(--text); border: 1px dashed var(--line); font-weight: 600; }
 .om-request-btn.on { border: 1px solid var(--amber); color: var(--amber); background: var(--amber-dim); }
 .om-request-count { text-align: center; font-size: 13px; color: var(--muted); }
+.om-flash { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: rgba(232,178,58,0.9); animation: om-flash 1.6s ease-out forwards; pointer-events: none; }
+.om-flash-text { font-family: var(--font-display); font-size: 40px; font-weight: 800; color: #14171C; }
+@keyframes om-flash { 0%, 15%, 30% { opacity: 1; } 8%, 22% { opacity: 0.35; } 100% { opacity: 0; } }
