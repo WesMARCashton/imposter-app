@@ -92,11 +92,30 @@ function startTimer(room, ms) {
   }, ms);
 }
 
+function openVote(room) {
+  const r = room.round;
+  r.pausedRemaining = r.endsAt ? Math.max(0, r.endsAt - Date.now()) : null;
+  clearTimer(r);
+  r.voteRequests = [];
+  r.phase = 'vote';
+}
+
+// Anyone can quietly ask for a vote. When a majority of players (host included) ask, voting opens.
+const votesNeeded = (room) => Math.floor(room.players.length / 2) + 1;
+function requestVote(room, playerId, on) {
+  const r = room.round;
+  if (!r || r.phase !== 'play' || !room.players.some(p => p.id === playerId)) return;
+  r.voteRequests = (r.voteRequests || []).filter(id => id !== playerId);
+  if (on) r.voteRequests.push(playerId);
+  if (r.voteRequests.length >= votesNeeded(room)) openVote(room);
+}
+
 // Host undo: back out of the vote and resume questions with whatever time was left.
 function cancelVote(room) {
   const r = room.round;
   if (!r || r.phase !== 'vote') return;
   r.votes = {};
+  r.voteRequests = [];
   r.phase = 'play';
   if (r.minutes && r.pausedRemaining > 0) startTimer(room, r.pausedRemaining);
   else r.endsAt = null;
@@ -110,9 +129,7 @@ function advance(room) {
     r.phase = 'play';
     if (r.minutes) startTimer(room, r.minutes * 60 * 1000);
   } else if (r.phase === 'play') {
-    r.pausedRemaining = r.endsAt ? Math.max(0, r.endsAt - Date.now()) : null;
-    clearTimer(r);
-    r.phase = 'vote';
+    openVote(room);
   } else if (r.phase === 'vote') {
     tally(room);
   }
@@ -163,6 +180,8 @@ function onPlayerRemoved(room, id) {
   if (!r || r.game !== 'offmap' || r.phase === 'results') return;
   if (id === r.spyId) return finish(room, 'crew', 'spy_left');
   delete r.votes[id];
+  r.voteRequests = (r.voteRequests || []).filter(x => x !== id);
+  if (r.phase === 'play' && r.voteRequests.length && r.voteRequests.length >= votesNeeded(room)) openVote(room);
   Object.keys(r.votes).forEach(v => { if (r.votes[v] === id) delete r.votes[v]; });
   if (room.players.length < 2) return finish(room, 'spy', 'no_crew');
   if (r.phase === 'vote' && room.players.every(p => r.votes[p.id])) tally(room);
@@ -180,6 +199,8 @@ function publicState(room) {
     endsAt: r.endsAt,
     serverNow: Date.now(),
     votedIds: r.phase === 'vote' ? Object.keys(r.votes) : [],
+    voteRequestCount: r.phase === 'play' ? (r.voteRequests || []).length : 0,
+    voteRequestNeeded: votesNeeded(room),
     accusedId: r.phase === 'spy_guess' ? r.accusedId : null,
     accusedName: r.phase === 'spy_guess' ? r.names[r.accusedId] : null,
     result: null
@@ -199,6 +220,6 @@ function publicState(room) {
 }
 
 module.exports = {
-  init, defaultSettings, sanitizeSettings, start, advance, cancelVote, vote, spyGuess,
+  init, defaultSettings, sanitizeSettings, start, advance, cancelVote, requestVote, vote, spyGuess,
   resendPrivate, onPlayerRemoved, publicState, MIN_PLAYERS, TIMER_OPTIONS
 };

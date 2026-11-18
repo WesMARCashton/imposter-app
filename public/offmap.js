@@ -155,6 +155,16 @@
       out.push(locationGrid(r, {}));
       if (isSpy) out.push(el('button', { class: 'danger', text: 'I know where we are \u2014 Guess', onclick: () => { O.guessMode = true; A.render(); } }));
     }
+    // Anonymous vote request: majority of players opens voting
+    const asked = !!O.requestedVote;
+    out.push(el('div', { class: 'om-request' }, [
+      el('button', {
+        class: asked ? 'om-request-btn on' : 'om-request-btn',
+        text: asked ? '\u2713 You asked for a vote (tap to take back)' : '\u270b Suspicious? Ask for a vote',
+        onclick: () => { O.requestedVote = !asked; socket.emit('om_request_vote', { code: A.state.code, playerId: A.state.playerId, on: !asked }); A.render(); }
+      }),
+      el('div', { class: 'om-request-count', text: `${r.voteRequestCount} of ${r.voteRequestNeeded} needed. Nobody sees who asked.` })
+    ]));
     out.push(el('div', { class: 'spacer' }));
     if (ctx.isHost) out.push(hostBtn('Call the Vote', isSpy && O.guessMode ? 'secondary' : 'primary'));
     return out;
@@ -242,6 +252,7 @@
     if (r.phase !== O.key) {
       if (r.phase === 'reveal') O.crossed = new Set();
       if (r.phase === 'vote') O.vote = null;
+      O.requestedVote = false;
       O.guessMode = false;
       O.key = r.phase;
     }
