@@ -32,6 +32,23 @@ function pickSpy(room, ids) {
   return ids[ids.length - 1];
 }
 
+// First asker rotates: everyone goes first once (random order) before anyone repeats,
+// and nobody goes first twice in a row across cycles. Handles players joining/leaving.
+function nextAsker(room, ids) {
+  let q = (room.offmapAskerQueue || []).filter(id => ids.includes(id));
+  if (!q.length) {
+    q = shuffle(ids);
+    if (q.length > 1 && q[0] === room.offmapLastAsker) q.push(q.shift());
+  }
+  const id = q.shift();
+  // New players who joined mid-cycle get added to the end of this cycle
+  ids.forEach(x => { if (!q.includes(x) && x !== id && !(room.offmapAskedThisCycle || []).includes(x)) q.push(x); });
+  room.offmapAskedThisCycle = q.length ? [...(room.offmapAskedThisCycle || []).filter(x => ids.includes(x)), id] : [];
+  room.offmapAskerQueue = q;
+  room.offmapLastAsker = id;
+  return id;
+}
+
 function start(room) {
   const ids = room.players.map(p => p.id);
   const spyId = pickSpy(room, ids);
@@ -59,7 +76,7 @@ function start(room) {
     pausedRemaining: null,
     jobs,
     names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
-    firstAskerId: shuffle(ids)[0],
+    firstAskerId: nextAsker(room, ids),
     minutes: s.minutes,
     endsAt: null,
     timer: null,
