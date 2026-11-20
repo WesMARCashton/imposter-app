@@ -341,23 +341,18 @@
         el('div', { class: 'error-text', text: state.error })
       ]));
     } else if (isHost && game === 'target') {
-      const tg = room.settings.target || { sport: 'bocce', min: 3, max: 10, imposters: 1 };
+      const tg = room.settings.target || { sport: 'bocce', imposters: 1 };
       const set = (patch) => updateSettings({ target: { ...tg, ...patch } });
-      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Playing' }), el('div', { class: 'sub', text: 'The real game you\u2019ll play' })])]));
-      const sp = el('div', { class: 'diff-tabs' });
-      [['bocce', 'Bocce'], ['shuffleboard', 'Shuffleboard'], ['other', 'Other']].forEach(([v, t]) => sp.appendChild(el('button', { class: tg.sport === v ? 'active' : '', text: t, onclick: () => set({ sport: v }) })));
+      const GAMES = {
+        bocce: ['Bocce', '0, 10, 20, 30, 40, 50'],
+        bullseye: ['Bullseye', '0, Front/Back 1\u20133, 10, 20, 25, Bullseye, Double'],
+        shuffleboard: ['Shuffleboard', '0, 10, 8 Left/Right, 7 Left/Right, \u221210'],
+        shufflealley: ['ShuffleAlley', '0, 1, 2, 3']
+      };
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Which game?' }), el('div', { class: 'sub', text: 'Targets: ' + (GAMES[tg.sport] || GAMES.bocce)[1] })])]));
+      const sp = el('div', { class: 'diff-tabs tg-games' });
+      Object.entries(GAMES).forEach(([v, [t]]) => sp.appendChild(el('button', { class: tg.sport === v ? 'active' : '', text: t, onclick: () => set({ sport: v }) })));
       children.push(sp);
-      const stepper = (label, sub, key, lo, hi) => el('div', { class: 'settings-row' }, [
-        el('div', {}, [el('div', { class: 'label', text: label }), el('div', { class: 'sub', text: sub })]),
-        el('div', { class: 'stepper' }, [
-          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ [key]: Math.max(lo(), tg[key] - 1) }) }),
-          el('span', { class: 'val', text: tg[key] }),
-          el('button', { class: 'secondary small', text: '+', onclick: () => set({ [key]: Math.min(hi(), tg[key] + 1) }) })
-        ])
-      ]);
-      children.push(el('div', { style: 'height:10px' }));
-      children.push(stepper('Lowest target', 'Smallest score the app can pick', 'min', () => 0, () => tg.max));
-      children.push(stepper('Highest target', 'Biggest score the app can pick', 'max', () => tg.min, () => 99));
       children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Imposters' })])]));
       const im = el('div', { class: 'diff-tabs' });
       [[1, '1'], [2, '2 (6+ players)']].forEach(([v, t]) => im.appendChild(el('button', { class: tg.imposters === v ? 'active' : '', text: t, onclick: () => set({ imposters: v }) })));

@@ -5,22 +5,23 @@
 const { shuffle } = require('../util');
 
 const MIN_PLAYERS = 3;
-const SPORTS = { bocce: 'Bocce', shuffleboard: 'Shuffleboard', other: 'the game' };
+// Each game's scoring spots. The secret target is one of these. Zero is always possible.
+const SPORTS = {
+  bocce: { name: 'Bocce', options: ['0', '10', '20', '30', '40', '50'] },
+  bullseye: { name: 'Bullseye', options: ['0', 'Front 1', 'Back 1', 'Front 2', 'Back 2', 'Front 3', 'Back 3', '10', '20', '25', 'Bullseye', 'Double'] },
+  shuffleboard: { name: 'Shuffleboard', options: ['0', '10', '8 Left', '8 Right', '7 Left', '7 Right', '-10'] },
+  shufflealley: { name: 'ShuffleAlley', options: ['0', '1', '2', '3'] }
+};
 
 let io = null;
 function init(socketIo) { io = socketIo; }
 
-function defaultSettings() { return { sport: 'bocce', min: 3, max: 10, imposters: 1 }; }
+function defaultSettings() { return { sport: 'bocce', imposters: 1 }; }
 function sanitizeSettings(s) {
   s = s || {};
   const sport = SPORTS[s.sport] ? s.sport : 'bocce';
-  let min = Math.max(0, Math.min(99, parseInt(s.min, 10)));
-  let max = Math.max(0, Math.min(99, parseInt(s.max, 10)));
-  if (!isFinite(min)) min = 3;
-  if (!isFinite(max)) max = 10;
-  if (max < min) max = min;
   const imposters = [1, 2].includes(parseInt(s.imposters, 10)) ? parseInt(s.imposters, 10) : 1;
-  return { sport, min, max, imposters };
+  return { sport, imposters };
 }
 
 const socketOf = (room, id) => { const p = room.players.find(x => x.id === id); return p && p.socketId; };
@@ -28,11 +29,11 @@ const socketOf = (room, id) => { const p = room.players.find(x => x.id === id); 
 function start(room) {
   const ids = room.players.map(p => p.id);
   const s = sanitizeSettings(room.settings.target);
-  // Avoid repeating last round's number when the range allows it
-  let target;
-  do { target = s.min + Math.floor(Math.random() * (s.max - s.min + 1)); }
-  while (s.max > s.min && target === room.lastTarget);
-  room.lastTarget = target;
+  const opts = SPORTS[s.sport].options;
+  // Never the same target two rounds in a row
+  const pickFrom = opts.filter(o => !(room.lastTarget && room.lastTarget.sport === s.sport && room.lastTarget.value === o));
+  const target = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+  room.lastTarget = { sport: s.sport, value: target };
 
   // Imposter pick: weighted down for recent imposters (streak breaker), never ruled out
   const recent = room.targetRecentImposters || [];
@@ -51,9 +52,9 @@ function start(room) {
   room.round = {
     game: 'target',
     phase: 'reveal',
-    sport: SPORTS[s.sport],
+    sport: SPORTS[s.sport].name,
     target,
-    range: [s.min, s.max],
+    options: opts.slice(),
     imposterIds,
     names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
     votes: {},
@@ -71,7 +72,7 @@ function sendRole(room, id) {
   const sid = socketOf(room, id);
   if (!sid) return;
   const imp = r.imposterIds.includes(id);
-  io.to(sid).emit('your_role', { game: 'target', imposter: imp, target: imp ? null : r.target, sport: r.sport, range: r.range });
+  io.to(sid).emit('your_role', { game: 'target', imposter: imp, target: imp ? null : r.target, sport: r.sport, options: r.options });
 }
 function resendPrivate(room, id) { if (room.round) sendRole(room, id); }
 
@@ -112,10 +113,10 @@ function tally(room) {
 function guess(room, id, value) {
   const r = room.round;
   if (!r || r.phase !== 'guess' || id !== r.accusedId) return;
-  const n = parseInt(value, 10);
-  if (!isFinite(n)) return;
-  r.guess = n;
-  finish(room, n === r.target ? 'imposter' : 'crew', n === r.target ? 'guessed' : 'caught');
+  const g = String(value);
+  if (!r.options.includes(g)) return;
+  r.guess = g;
+  finish(room, g === r.target ? 'imposter' : 'crew', g === r.target ? 'guessed' : 'caught');
 }
 
 function finish(room, winner, reason) {
@@ -143,7 +144,7 @@ function publicState(room) {
     game: 'target',
     phase: r.phase,
     sport: r.sport,
-    range: r.range,
+    options: r.options,
     imposterCount: r.imposterIds.length,
     votedIds: r.phase === 'vote' ? Object.keys(r.votes) : [],
     accusedId: r.phase === 'guess' ? r.accusedId : null,
@@ -164,6 +165,7 @@ function publicState(room) {
 }
 
 module.exports = {
+  SPORTS,
   init, defaultSettings, sanitizeSettings, start, advance, backToPlay, vote, guess,
   resendPrivate, onPlayerRemoved, publicState, MIN_PLAYERS
 };
