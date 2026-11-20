@@ -8,6 +8,7 @@ const weasel = require('./games/weasel');
 const offmap = require('./games/offmap');
 const amongus = require('./games/amongus');
 const clue = require('./games/clue');
+const target = require('./games/target');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,7 +18,8 @@ weasel.init(io);
 offmap.init(io, (code) => broadcastRoom(code));
 amongus.init(io, (code) => broadcastRoom(code));
 clue.init(io);
-const MODULES = { weasel, offmap, amongus, clue };
+target.init(io);
+const MODULES = { weasel, offmap, amongus, clue, target };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -87,7 +89,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -148,6 +150,7 @@ io.on('connection', (socket) => {
     if (settings.weasel) room.settings.weasel = weasel.sanitizeSettings(settings.weasel);
     if (settings.offmap) room.settings.offmap = offmap.sanitizeSettings(settings.offmap);
     if (settings.amongus) room.settings.amongus = amongus.sanitizeSettings(settings.amongus);
+    if (settings.target) room.settings.target = target.sanitizeSettings(settings.target);
     const maxImposters = Math.max(1, Math.floor(room.players.length / 3));
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
@@ -288,6 +291,19 @@ io.on('connection', (socket) => {
   socket.on('client_error', (info) => {
     try { console.error('[client_error]', JSON.stringify(info).slice(0, 1500)); } catch (e) { /* ignore */ }
   });
+
+  // ---- Hit the Number ----
+  const tgAction = (ev, fn, hostOnly) => socket.on(ev, (d) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== 'target') return;
+    if (hostOnly && room.hostId !== d.playerId) return;
+    fn(room, d);
+    broadcastRoom(d.code);
+  });
+  tgAction('tg_advance', (room) => target.advance(room), true);
+  tgAction('tg_back', (room) => target.backToPlay(room), true);
+  tgAction('tg_vote', (room, d) => target.vote(room, d.playerId, d.targetId));
+  tgAction('tg_guess', (room, d) => target.guess(room, d.playerId, d.value));
 
   // ---- Clue ----
   const clueAction = (ev, fn, hostOnly) => socket.on(ev, (d) => {

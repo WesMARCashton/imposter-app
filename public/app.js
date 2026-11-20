@@ -49,8 +49,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE', target: 'HIT THE NUMBER' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue', target: 'Hit the Number' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -73,6 +73,7 @@
     if (role && role.game === 'weasel' && window.App.buildWeaselCard) return window.App.buildWeaselCard(role);
     if (role && role.game === 'offmap' && window.App.buildOffmapCard) return window.App.buildOffmapCard(role);
     if (role && role.game === 'amongus' && window.App.buildAmongUsCard) return window.App.buildAmongUsCard(role);
+    if (role && role.game === 'target' && window.App.buildTargetCard) return window.App.buildTargetCard(role);
     const card = el('div', { class: 'card' });
     const lamp = el('div', { class: 'lamp' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -339,6 +340,30 @@
         }),
         el('div', { class: 'error-text', text: state.error })
       ]));
+    } else if (isHost && game === 'target') {
+      const tg = room.settings.target || { sport: 'bocce', min: 3, max: 10, imposters: 1 };
+      const set = (patch) => updateSettings({ target: { ...tg, ...patch } });
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Playing' }), el('div', { class: 'sub', text: 'The real game you\u2019ll play' })])]));
+      const sp = el('div', { class: 'diff-tabs' });
+      [['bocce', 'Bocce'], ['shuffleboard', 'Shuffleboard'], ['other', 'Other']].forEach(([v, t]) => sp.appendChild(el('button', { class: tg.sport === v ? 'active' : '', text: t, onclick: () => set({ sport: v }) })));
+      children.push(sp);
+      const stepper = (label, sub, key, lo, hi) => el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: label }), el('div', { class: 'sub', text: sub })]),
+        el('div', { class: 'stepper' }, [
+          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ [key]: Math.max(lo(), tg[key] - 1) }) }),
+          el('span', { class: 'val', text: tg[key] }),
+          el('button', { class: 'secondary small', text: '+', onclick: () => set({ [key]: Math.min(hi(), tg[key] + 1) }) })
+        ])
+      ]);
+      children.push(el('div', { style: 'height:10px' }));
+      children.push(stepper('Lowest target', 'Smallest score the app can pick', 'min', () => 0, () => tg.max));
+      children.push(stepper('Highest target', 'Biggest score the app can pick', 'max', () => tg.min, () => 99));
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Imposters' })])]));
+      const im = el('div', { class: 'diff-tabs' });
+      [[1, '1'], [2, '2 (6+ players)']].forEach(([v, t]) => im.appendChild(el('button', { class: tg.imposters === v ? 'active' : '', text: t, onclick: () => set({ imposters: v }) })));
+      children.push(im);
+      children.push(el('div', { style: 'height:16px' }));
+      children.push(startBtn('Start Hit the Number'));
     } else if (isHost && game === 'clue') {
       children.push(el('p', { class: 'center-note', text: '3\u20136 players. Turn order follows the player list above.' }));
       if (room.players.length > 6) children.push(el('p', { class: 'error-text', text: 'Clue supports up to 6 players.' }));
@@ -638,6 +663,7 @@
     if (room.round.game === 'offmap') return 'offmap';
     if (room.round.game === 'amongus') return 'amongus';
     if (room.round.game === 'clue') return 'clue';
+    if (room.round.game === 'target') return 'target';
     return room.round.phase || 'reveal';
   }
 

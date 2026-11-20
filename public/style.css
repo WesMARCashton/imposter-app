@@ -518,3 +518,15 @@ input[type=text]#w-est { font-family: var(--font-display); font-size: 22px; text
 .clue-hand-row .muted { font-size: 12px; color: var(--muted); text-align: right; max-width: 60%; }
 .game-tabs, .help-tabs { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .game-tabs button, .help-tabs button { font-size: 13px; padding: 10px 4px; }
+
+/* ---------- Hit the Number ---------- */
+.brand .dot.target { background: radial-gradient(circle at 35% 30%, #BDF2D6, #4B9E7A 60%, #1f4a37 100%); box-shadow: 0 0 14px 2px rgba(75,158,122,0.55); }
+.tg-number { font-family: var(--font-display); font-size: 96px; font-weight: 800; line-height: 1; margin: 10px 0 14px; color: var(--safe); }
+.tg-number.imp { color: var(--danger); }
+.tg-number.small { font-size: 64px; margin: 4px 0 8px; color: var(--amber); }
+.tg-play { text-align: center; padding-top: 20px; }
+.tg-play h1 { font-size: 44px; margin: 6px 0 12px; }
+.tg-play .muted, .tg-answer .muted { color: var(--muted); font-size: 14px; }
+.tg-answer { text-align: center; margin: 4px 0 16px; }
+.tg-answer .label-sm { margin: 0; }
+input#tg-guess { font-family: var(--font-display); font-size: 32px; text-align: center; }
