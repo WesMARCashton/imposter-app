@@ -17,11 +17,11 @@
     card.appendChild(hint);
     card.appendChild(el('div', { class: 'content blank' }, [el('div', { class: 'role-word', text: '?' })]));
     card.appendChild(el('div', { class: 'content secret' }, [
-      el('div', { class: 'role-label' + (imp ? ' weasel' : ' crew'), text: imp ? 'YOU ARE THE IMPOSTER' : 'YOUR TARGET SCORE' }),
-      el('div', { class: 'tg-number' + (imp ? ' imp' : ''), text: imp ? '??' : String(role.target) }),
+      el('div', { class: 'role-label' + (imp ? ' weasel' : ' crew'), text: imp ? 'YOU ARE THE IMPOSTER' : 'YOUR TARGET' }),
+      el('div', { class: 'tg-number' + (imp ? ' imp' : '') + (String(role.target || '').length > 3 ? ' long' : ''), text: imp ? '??' : String(role.target) }),
       el('div', { class: 'category-tag', text: imp
-        ? `You don't know the number (it's ${role.range[0]}–${role.range[1]}). Blend in.`
-        : `Try to finish ${role.sport} with exactly ${role.target}.` })
+        ? `You don't know the target. Watch where everyone aims in ${role.sport} and blend in.`
+        : `In ${role.sport}, aim for: ${role.target}` })
     ]));
     const startPeek = (e) => { e.preventDefault(); card.classList.add('peeking'); hint.textContent = 'Release to hide'; };
     const endPeek = () => { card.classList.remove('peeking'); hint.textContent = 'Press and hold to peek'; };
@@ -36,10 +36,10 @@
   const PHASES = {};
 
   PHASES.reveal = (room, r, ctx) => {
-    if (!A.state.myRole) return [note('Dealing numbers…')];
+    if (!A.state.myRole) return [note('Dealing targets…')];
     return [el('div', { class: 'card-reveal' }, [
       A.buildPeekCard(),
-      el('p', { text: `Everyone has the same secret target except ${r.imposterCount > 1 ? 'the ' + r.imposterCount + ' Imposters' : 'one Imposter'}. Don't say your number out loud.` }),
+      el('p', { text: `Everyone has the same secret target except ${r.imposterCount > 1 ? 'the ' + r.imposterCount + ' Imposters' : 'one Imposter'}. Don't say your target out loud.` }),
       ctx.isHost ? hostBtn('Everyone’s seen it — go play', 'tg_advance') : note('Waiting for the host.')
     ])];
   };
@@ -48,8 +48,10 @@
     el('div', { class: 'tg-play' }, [
       el('div', { class: 'help-kicker', text: 'Go play' }),
       el('h1', { text: r.sport }),
-      el('p', { text: 'Try to finish with exactly your target score. Watch who seems to be aiming for something different.' }),
-      el('p', { class: 'muted', text: `Target range this round: ${r.range[0]}–${r.range[1]}. Tap "My Role" to check your number.` })
+      el('p', { text: 'Aim for your secret target. Watch who seems to be aiming somewhere different.' }),
+      el('div', { class: 'label-sm', text: 'Possible targets' }),
+      el('div', { class: 'tg-opts' }, r.options.map(o => el('span', { class: 'tg-opt', text: o }))),
+      el('p', { class: 'muted', text: 'Tap "My Role" to check yours.' })
     ]),
     el('div', { class: 'spacer' }),
     ctx.isHost ? hostBtn('Game over — time to vote', 'tg_advance') : note('When the game ends, the host opens the vote.')
@@ -77,23 +79,25 @@
       el('h2', { text: `${r.accusedName} was the Imposter!` }),
       el('p', { text: 'They get one guess at the target number to steal the win.' })
     ];
-    const input = el('input', { type: 'text', id: 'tg-guess', inputmode: 'numeric', placeholder: `${r.range[0]}–${r.range[1]}`, autocomplete: 'off' });
-    input.value = T.guess;
-    const btn = el('button', { class: 'primary', text: 'Lock in guess', onclick: () => { if (confirm(`Final guess: ${T.guess}?`)) emit('tg_guess', { value: T.guess }); } });
-    btn.disabled = !String(T.guess).trim();
-    input.addEventListener('input', () => { T.guess = input.value.replace(/[^0-9]/g, ''); input.value = T.guess; btn.disabled = !T.guess; });
+    const grid = el('div', { class: 'tg-guess-grid' });
+    r.options.forEach(o => grid.appendChild(el('button', {
+      class: 'clue-opt' + (T.guess === o ? ' on' : ''), text: o,
+      onclick: () => { T.guess = o; A.render(); }
+    })));
+    const btn = el('button', { class: 'primary', text: T.guess ? `Lock in: ${T.guess}` : 'Pick a target', onclick: () => { if (confirm(`Final guess: ${T.guess}?`)) emit('tg_guess', { value: T.guess }); } });
+    btn.disabled = !T.guess;
     return [
       el('h2', { text: 'You got caught!' }),
-      el('p', { text: `Guess the exact target number (${r.range[0]}–${r.range[1]}) to steal the win.` }),
-      input, btn
+      el('p', { text: 'Guess the exact target to steal the win.' }),
+      grid, btn
     ];
   };
 
   const REASONS = {
     tie: 'The vote tied. The Imposter slipped away.',
     wrong_vote: (res) => `You voted out ${res.accusedName}, who wasn't the Imposter.`,
-    guessed: (res) => `Caught, but they guessed ${res.guess}. Exactly right!`,
-    caught: (res) => `Caught, and they guessed ${res.guess}. Wrong.`,
+    guessed: (res) => `Caught, but they guessed "${res.guess}". Exactly right!`,
+    caught: (res) => `Caught, and they guessed "${res.guess}". Wrong.`,
     imposter_left: 'The Imposter left the game.'
   };
 
@@ -113,7 +117,7 @@
       ]),
       el('div', { class: 'tg-answer' }, [
         el('div', { class: 'label-sm', text: 'The target was' }),
-        el('div', { class: 'tg-number small', text: String(res.target) }),
+        el('div', { class: 'tg-number small' + (String(res.target).length > 3 ? ' long' : ''), text: String(res.target) }),
         el('div', { class: 'muted', text: 'Imposter: ' + res.imposters.join(', ') })
       ]),
       list,

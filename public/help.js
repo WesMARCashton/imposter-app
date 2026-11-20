@@ -87,23 +87,23 @@
     },
     target: {
       name: 'Hit the Number',
-      players: '3+ players \u00b7 played on a real game (Bocce, Shuffleboard\u2026)',
-      goal: 'Crew: land on the secret target score and spot the Imposter. Imposter: blend in without knowing the number.',
+      players: '3+ players \u00b7 played on the shuffleboard machine (Bocce, Bullseye, Shuffleboard, ShuffleAlley)',
+      goal: 'Crew: aim for the secret target and spot the Imposter. Imposter: blend in without knowing the target.',
       sections: [
         ['Setup', [
-          'The host picks the game you\u2019re playing and the score range (e.g. 3\u201310).',
-          'Everyone gets the same secret target score, except the Imposter, who only knows the range.',
-          'Press and hold your card to see it. Don\u2019t say your number out loud.'
+          'The host picks which game you\u2019re playing. The secret target is one of that game\u2019s scoring spots (0 is always possible): Bocce 0\u201350, Bullseye Front/Back 1\u20133 + dartboard, Shuffleboard 10 / 8 L-R / 7 L-R / \u221210, ShuffleAlley 0\u20133.',
+          'Everyone gets the same secret target, except the Imposter, who gets nothing.',
+          'Press and hold your card to see it. Don\u2019t say your target out loud.'
         ]],
         ['Play', [
-          'Play the real game. Try to finish with exactly your target score.',
+          'Play the real game. Aim for your target.',
           'The Imposter has to guess what everyone is aiming for and act natural.',
           'Watch for anyone who seems to be playing for a different score.'
         ]],
         ['Vote', [
           'When the game ends, the host opens the vote. Everyone votes for who they think was the Imposter.',
           'Wrong person or a tie = Imposter wins.',
-          'If the Imposter is caught, they get one guess at the exact number. Right = they steal the win.'
+          'If the Imposter is caught, they pick one guess from the list of targets. Right = they steal the win.'
         ]]
       ]
     },
