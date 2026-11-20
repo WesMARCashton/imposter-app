@@ -102,8 +102,8 @@
           'The night ends when everyone has tapped (or the host ends it).'
         ]],
         ['Day', [
-          'Dawn reveals who died and their role, or that the Doctor saved someone. The village\u2019s top suspect is announced too.',
-          'Discuss, then vote. Most votes is out and their role is revealed. Tie or skip = nobody.',
+          'Dawn reveals who died (not their role), or that the Doctor saved someone. The village\u2019s top suspect is announced too.',
+          'Discuss, then vote. Most votes is out. Tie or skip = nobody. Roles of dead players stay secret until the game ends.',
           'Dead players stay quiet.'
         ]],
         ['Winning', [
