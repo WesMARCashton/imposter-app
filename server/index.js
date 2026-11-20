@@ -7,6 +7,7 @@ const { shuffle: fisherYatesShuffle, genId } = require('./util');
 const weasel = require('./games/weasel');
 const offmap = require('./games/offmap');
 const amongus = require('./games/amongus');
+const clue = require('./games/clue');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,7 +16,8 @@ const PORT = process.env.PORT || 3000;
 weasel.init(io);
 offmap.init(io, (code) => broadcastRoom(code));
 amongus.init(io, (code) => broadcastRoom(code));
-const MODULES = { weasel, offmap, amongus };
+clue.init(io);
+const MODULES = { weasel, offmap, amongus, clue };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -85,7 +87,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -160,6 +162,7 @@ io.on('connection', (socket) => {
     const mod = MODULES[room.settings.game];
     if (mod) {
       if (room.players.length < mod.MIN_PLAYERS) return cb && cb({ ok: false, error: `Need at least ${mod.MIN_PLAYERS} players` });
+      if (mod.MAX_PLAYERS && room.players.length > mod.MAX_PLAYERS) return cb && cb({ ok: false, error: `Max ${mod.MAX_PLAYERS} players for this game` });
       mod.start(room);
       cb && cb({ ok: true });
       broadcastRoom(code);
@@ -281,6 +284,21 @@ io.on('connection', (socket) => {
     weasel.submitQuiz(room, playerId, answers);
     broadcastRoom(code);
   });
+
+  // ---- Clue ----
+  const clueAction = (ev, fn, hostOnly) => socket.on(ev, (d) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== 'clue') return;
+    if (hostOnly && room.hostId !== d.playerId) return;
+    fn(room, d);
+    broadcastRoom(d.code);
+  });
+  clueAction('clue_advance', (room) => clue.advance(room), true);
+  clueAction('clue_suggest', (room, d) => clue.suggest(room, d.playerId, d.suspect, d.weapon, d.room));
+  clueAction('clue_refute', (room, d) => clue.refute(room, d.playerId, d.card));
+  clueAction('clue_end_turn', (room, d) => clue.endTurn(room, d.playerId, false));
+  clueAction('clue_skip_turn', (room, d) => clue.endTurn(room, d.playerId, true), true);
+  clueAction('clue_accuse', (room, d) => clue.accuse(room, d.playerId, d.suspect, d.weapon, d.room));
 
   // ---- Among Us ----
   const auRoom = (code) => { const room = rooms[code]; return room && room.round && room.round.game === 'amongus' ? room : null; };
