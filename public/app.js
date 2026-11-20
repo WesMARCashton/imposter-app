@@ -35,8 +35,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -312,6 +312,10 @@
         }),
         el('div', { class: 'error-text', text: state.error })
       ]));
+    } else if (isHost && game === 'clue') {
+      children.push(el('p', { class: 'center-note', text: '3\u20136 players. Turn order follows the player list above.' }));
+      if (room.players.length > 6) children.push(el('p', { class: 'error-text', text: 'Clue supports up to 6 players.' }));
+      children.push(startBtn('Start Clue'));
     } else if (isHost && game === 'amongus') {
       const au = room.settings.amongus || { impostors: 0, tasks: 5, killCooldown: 30 };
       const set = (patch) => updateSettings({ amongus: { ...au, ...patch } });
@@ -606,6 +610,7 @@
     if (room.round.game === 'weasel') return 'weasel';
     if (room.round.game === 'offmap') return 'offmap';
     if (room.round.game === 'amongus') return 'amongus';
+    if (room.round.game === 'clue') return 'clue';
     return room.round.phase || 'reveal';
   }
 

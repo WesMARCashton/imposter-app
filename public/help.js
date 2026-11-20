@@ -85,6 +85,34 @@
         ]]
       ]
     },
+    clue: {
+      name: 'Clue',
+      players: '3\u20136 players \u00b7 about 15\u201325 min',
+      goal: 'Be the first to work out who did it, with what, and where.',
+      sections: [
+        ['Setup', [
+          'The app secretly picks one suspect, one weapon and one room. That\u2019s the answer.',
+          'All the other cards are dealt to the players. Your cards are NOT the answer \u2014 use them to rule things out.',
+          'Your Detective notes cross off your own cards automatically.'
+        ]],
+        ['Your turn', [
+          'Pick a room to search (not the same one as your last turn), then name a suspect and a weapon.',
+          'The app checks the next players in order. The first one holding any of those cards must show you one \u2014 only you see which.',
+          'Everyone else just sees who showed you a card. Cards shown to you are crossed off in your notes automatically.',
+          'If nobody can disprove it, those cards are either in your own hand or the answer.'
+        ]],
+        ['Winning', [
+          'When you think you know, tap Final accusation on your turn (before or after suggesting).',
+          'Right = you win. Wrong = you\u2019re out, but you still have to show cards when asked.',
+          'If everyone else is out, the last detective standing wins.'
+        ]],
+        ['Tips', [
+          'Read the Case log: if someone couldn\u2019t disprove a suggestion, they hold none of those cards.',
+          'Suggest cards from your own hand to trick other players.',
+          'Tap cards in your notes to mark \u2717 (ruled out) or ? (suspicious).'
+        ]]
+      ]
+    },
     amongus: {
       name: 'Among Us',
       players: '4–8 players',
