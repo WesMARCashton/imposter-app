@@ -1,6 +1,6 @@
-# Undercover + Inside Job + The Weasel
+# Office Shenanigans
 
-Three local multiplayer social deduction games. Host picks the game in the lobby. Everyone plays from their own phone, in the same room.
+Office party games (Undercover, Inside Job, The Weasel, Among Us, Clue, Hit the Number).
 
 ## Stack
 - Node/Express + Socket.io (realtime rooms, in-memory state)

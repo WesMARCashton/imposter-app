@@ -128,7 +128,7 @@
 
   function brand() {
     const dot = el('div', { class: 'dot' });
-    const label = el('span', { text: state.code ? GAME_LABELS[currentGame()] : 'PARTY GAMES' });
+    const label = el('span', { text: state.code ? GAME_LABELS[currentGame()] : 'OFFICE SHENANIGANS' });
     if (state.code && currentGame() !== 'undercover') dot.classList.add(currentGame());
     if (!state.code) {
       return el('div', { class: 'brand' }, [dot, label]);
@@ -192,7 +192,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'Social deduction party games: Undercover, Inside Job, The Weasel. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: 'Undercover, Inside Job, The Weasel, Among Us, Clue and Hit the Number. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } }),
