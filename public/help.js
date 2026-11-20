@@ -85,6 +85,53 @@
         ]]
       ]
     },
+    werewolf: {
+      name: 'Werewolf',
+      players: '5+ players \u00b7 the app is the narrator',
+      goal: 'Village: find and vote out every Werewolf. Werewolves: eliminate villagers until you equal them.',
+      sections: [
+        ['Roles', [
+          '\ud83d\udc3a Werewolves (1\u20133): pick someone to eliminate each night. They know each other.',
+          '\ud83d\udd2e Seer: each night, check one player to learn if they\u2019re a Werewolf.',
+          '\ud83e\ude7a Doctor: each night, protect one player (yourself allowed, not the same person twice in a row).',
+          '\ud83e\uddd1\u200d\ud83c\udf3e Villagers: no power \u2014 just your wits.'
+        ]],
+        ['Night', [
+          'Everyone taps something on their phone, so nobody can tell who has a power. Villagers mark who they suspect.',
+          'Werewolves see each other\u2019s picks. If they split, the app picks one of their top choices.',
+          'The night ends when everyone has tapped (or the host ends it).'
+        ]],
+        ['Day', [
+          'Dawn reveals who died and their role, or that the Doctor saved someone. The village\u2019s top suspect is announced too.',
+          'Discuss, then vote. Most votes is out and their role is revealed. Tie or skip = nobody.',
+          'Dead players stay quiet.'
+        ]],
+        ['Winning', [
+          'Village wins when every Werewolf is gone.',
+          'Werewolves win when they equal the number of villagers.'
+        ]]
+      ]
+    },
+    calledshot: {
+      name: 'Called Shot',
+      players: '2+ players \u00b7 on the shuffleboard machine',
+      goal: 'Score the most points by hitting your called shots and reading everyone else.',
+      sections: [
+        ['Each turn', [
+          'The shooter secretly calls a spot on their phone (Bocce, Bullseye, Shuffleboard or ShuffleAlley spots).',
+          'Everyone else bets: will they HIT or MISS? They don\u2019t know what was called.',
+          'The shooter throws, then honestly taps "I hit it" or "I missed". The call is revealed to everyone.'
+        ]],
+        ['Scoring', [
+          'Shooter: +2 for a hit, plus +1 for every person who bet wrong.',
+          'Bettors: +1 for a correct bet.',
+          'Call easy spots and people bet HIT. Call hard ones and they bet MISS. Mind games!'
+        ]],
+        ['End', [
+          'Everyone shoots the number of times the host set. Highest score wins.'
+        ]]
+      ]
+    },
     target: {
       name: 'Hit the Number',
       players: '3+ players \u00b7 played on the shuffleboard machine (Bocce, Bullseye, Shuffleboard, ShuffleAlley)',

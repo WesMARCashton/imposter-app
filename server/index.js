@@ -9,6 +9,8 @@ const offmap = require('./games/offmap');
 const amongus = require('./games/amongus');
 const clue = require('./games/clue');
 const target = require('./games/target');
+const werewolf = require('./games/werewolf');
+const calledshot = require('./games/calledshot');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +21,9 @@ offmap.init(io, (code) => broadcastRoom(code));
 amongus.init(io, (code) => broadcastRoom(code));
 clue.init(io);
 target.init(io);
-const MODULES = { weasel, offmap, amongus, clue, target };
+werewolf.init(io);
+calledshot.init(io);
+const MODULES = { weasel, offmap, amongus, clue, target, werewolf, calledshot };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -89,7 +93,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings(), werewolf: werewolf.defaultSettings(), calledshot: calledshot.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -151,6 +155,8 @@ io.on('connection', (socket) => {
     if (settings.offmap) room.settings.offmap = offmap.sanitizeSettings(settings.offmap);
     if (settings.amongus) room.settings.amongus = amongus.sanitizeSettings(settings.amongus);
     if (settings.target) room.settings.target = target.sanitizeSettings(settings.target);
+    if (settings.werewolf) room.settings.werewolf = werewolf.sanitizeSettings(settings.werewolf);
+    if (settings.calledshot) room.settings.calledshot = calledshot.sanitizeSettings(settings.calledshot);
     const maxImposters = Math.max(1, Math.floor(room.players.length / 3));
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
@@ -291,6 +297,24 @@ io.on('connection', (socket) => {
   socket.on('client_error', (info) => {
     try { console.error('[client_error]', JSON.stringify(info).slice(0, 1500)); } catch (e) { /* ignore */ }
   });
+
+  // ---- Werewolf / Called Shot ----
+  const modAction = (game, ev, fn, hostOnly) => socket.on(ev, (d) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== game) return;
+    if (hostOnly && room.hostId !== d.playerId) return;
+    fn(room, d, room.hostId === d.playerId);
+    broadcastRoom(d.code);
+  });
+  modAction('werewolf', 'ww_advance', (room) => werewolf.advance(room), true);
+  modAction('werewolf', 'ww_night', (room, d) => werewolf.nightPick(room, d.playerId, d.target));
+  modAction('werewolf', 'ww_vote', (room, d) => werewolf.dayVote(room, d.playerId, d.target));
+  modAction('calledshot', 'cs_call', (room, d) => calledshot.callShot(room, d.playerId, d.option));
+  modAction('calledshot', 'cs_bet', (room, d) => calledshot.bet(room, d.playerId, d.choice));
+  modAction('calledshot', 'cs_report', (room, d, isHost) => calledshot.report(room, d.playerId, !!d.hit, isHost));
+  modAction('calledshot', 'cs_next', (room, d, isHost) => calledshot.next(room, d.playerId, isHost));
+  modAction('calledshot', 'cs_force_throw', (room) => calledshot.forceThrow(room), true);
+  modAction('calledshot', 'cs_end', (room) => calledshot.endEarly(room), true);
 
   // ---- Hit the Number ----
   const tgAction = (ev, fn, hostOnly) => socket.on(ev, (d) => {

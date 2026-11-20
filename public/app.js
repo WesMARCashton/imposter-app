@@ -49,8 +49,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE', target: 'HIT THE NUMBER' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue', target: 'Hit the Number' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE', target: 'HIT THE NUMBER', werewolf: 'WEREWOLF', calledshot: 'CALLED SHOT' };
+  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue', target: 'Hit the Number', werewolf: 'Werewolf', calledshot: 'Called Shot' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -74,6 +74,7 @@
     if (role && role.game === 'offmap' && window.App.buildOffmapCard) return window.App.buildOffmapCard(role);
     if (role && role.game === 'amongus' && window.App.buildAmongUsCard) return window.App.buildAmongUsCard(role);
     if (role && role.game === 'target' && window.App.buildTargetCard) return window.App.buildTargetCard(role);
+    if (role && role.game === 'werewolf' && window.App.buildWerewolfCard) return window.App.buildWerewolfCard(role);
     const card = el('div', { class: 'card' });
     const lamp = el('div', { class: 'lamp' });
     const hint = el('div', { class: 'hint', text: 'Press and hold to peek' });
@@ -192,7 +193,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: 'Undercover, Inside Job, The Weasel, Among Us, Clue and Hit the Number. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: '8 games: Undercover, Inside Job, The Weasel, Among Us, Clue, Werewolf, Hit the Number and Called Shot. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } }),
@@ -280,7 +281,7 @@
     children.push(list);
 
     const game = currentGame();
-    const minPlayers = (game === 'weasel' || game === 'amongus') ? 4 : 3;
+    const minPlayers = game === 'werewolf' ? 5 : game === 'calledshot' ? 2 : (game === 'weasel' || game === 'amongus') ? 4 : 3;
     const startBtn = (label) => el('div', { class: 'stack top' }, [
       room.players.length < minPlayers ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
       el('button', {
@@ -340,6 +341,42 @@
         }),
         el('div', { class: 'error-text', text: state.error })
       ]));
+    } else if (isHost && game === 'werewolf') {
+      const ws = room.settings.werewolf || { wolves: 0, seer: true, doctor: true };
+      const set = (patch) => updateSettings({ werewolf: { ...ws, ...patch } });
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Werewolves' }), el('div', { class: 'sub', text: 'Auto = 1 for 5\u20136 players, 2 for 7\u20139, 3 for 10+' })])]));
+      const wt = el('div', { class: 'diff-tabs' });
+      [[0, 'Auto'], [1, '1'], [2, '2'], [3, '3']].forEach(([v, t]) => wt.appendChild(el('button', { class: ws.wolves === v ? 'active' : '', text: t, onclick: () => set({ wolves: v }) })));
+      children.push(wt);
+      const toggle = (label, sub, key) => {
+        const sw = el('label', { class: 'switch' });
+        const cb = el('input', { type: 'checkbox' }); cb.checked = ws[key];
+        cb.addEventListener('change', () => set({ [key]: cb.checked }));
+        sw.appendChild(cb); sw.appendChild(el('span', { class: 'track' }));
+        return el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: label }), el('div', { class: 'sub', text: sub })]), sw]);
+      };
+      children.push(el('div', { style: 'height:10px' }));
+      children.push(toggle('Seer', 'Checks one player each night', 'seer'));
+      children.push(toggle('Doctor', 'Protects one player each night', 'doctor'));
+      children.push(el('div', { style: 'height:12px' }));
+      children.push(startBtn('Start Werewolf'));
+    } else if (isHost && game === 'calledshot') {
+      const cs = room.settings.calledshot || { sport: 'bocce', turns: 3 };
+      const set = (patch) => updateSettings({ calledshot: { ...cs, ...patch } });
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Which game?' }), el('div', { class: 'sub', text: 'Spots you can call come from this game' })])]));
+      const sp = el('div', { class: 'diff-tabs tg-games' });
+      [['bocce', 'Bocce'], ['bullseye', 'Bullseye'], ['shuffleboard', 'Shuffleboard'], ['shufflealley', 'ShuffleAlley']].forEach(([v, t]) => sp.appendChild(el('button', { class: cs.sport === v ? 'active' : '', text: t, onclick: () => set({ sport: v }) })));
+      children.push(sp);
+      children.push(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Shots each' })]),
+        el('div', { class: 'stepper' }, [
+          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ turns: Math.max(1, cs.turns - 1) }) }),
+          el('span', { class: 'val', text: cs.turns }),
+          el('button', { class: 'secondary small', text: '+', onclick: () => set({ turns: Math.min(10, cs.turns + 1) }) })
+        ])
+      ]));
+      children.push(el('div', { style: 'height:12px' }));
+      children.push(startBtn('Start Called Shot'));
     } else if (isHost && game === 'target') {
       const tg = room.settings.target || { sport: 'bocce', imposters: 1 };
       const set = (patch) => updateSettings({ target: { ...tg, ...patch } });
@@ -659,6 +696,8 @@
     if (room.round.game === 'amongus') return 'amongus';
     if (room.round.game === 'clue') return 'clue';
     if (room.round.game === 'target') return 'target';
+    if (room.round.game === 'werewolf') return 'werewolf';
+    if (room.round.game === 'calledshot') return 'calledshot';
     return room.round.phase || 'reveal';
   }
 
