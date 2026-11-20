@@ -46,7 +46,7 @@
 
   function playerList(r) {
     const box = el('div', { class: 'ww-players' });
-    r.players.forEach(p => box.appendChild(el('span', { class: 'ww-p' + (p.alive ? '' : ' dead'), text: (p.alive ? '' : '💀 ') + p.name + (p.role && !p.alive ? ` (${p.role})` : '') })));
+    r.players.forEach(p => box.appendChild(el('span', { class: 'ww-p' + (p.alive ? '' : ' dead'), text: (p.alive ? '' : '💀 ') + p.name })));
     return box;
   }
 
@@ -106,7 +106,7 @@
   PHASES.dawn = (room, r, ctx) => {
     const d = r.dawn;
     const out = [el('div', { class: 'ww-banner day' }, [el('div', { class: 'big', text: '☀️ Day ' + r.dayNum })])];
-    if (d.victimName) out.push(el('div', { class: 'ww-death' }, [el('div', { class: 'big', text: `${d.victimName} was killed.` }), el('div', { text: `They were a ${d.victimRole}.` })]));
+    if (d.victimName) out.push(el('div', { class: 'ww-death' }, [el('div', { class: 'big', text: `${d.victimName} was killed.` }), el('div', { text: 'Their role stays secret until the end.' })]));
     else if (d.saved) out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'Nobody died!' }), el('div', { text: 'The Doctor saved someone last night.' })]));
     else out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'A quiet night.' }), el('div', { text: 'Nobody was attacked.' })]));
     if (d.suspect) out.push(note(`The village was most suspicious of ${d.suspect} last night.`));
@@ -127,7 +127,7 @@
       grid.appendChild(el('div', {
         class: 'vote-option' + (p.alive ? '' : ' au-dead') + (W.vote === p.id ? ' selected' : ''),
         onclick: () => { if (!canPick) return; W.vote = p.id; emit('ww_vote', { target: p.id }); A.render(); }
-      }, [el('span', { text: (p.alive ? '' : '💀 ') + p.name + (p.id === ctx.me ? ' (you)' : '') }), el('span', { class: 'count', text: p.alive ? (r.votedIds.includes(p.id) ? 'voted ✓' : '') : (p.role || '') })]));
+      }, [el('span', { text: (p.alive ? '' : '💀 ') + p.name + (p.id === ctx.me ? ' (you)' : '') }), el('span', { class: 'count', text: p.alive ? (r.votedIds.includes(p.id) ? 'voted ✓' : '') : 'dead' })]));
     });
     out.push(grid);
     if (me.alive) out.push(el('button', { class: 'secondary' + (W.vote === 'skip' ? ' on' : ''), text: W.vote === 'skip' ? 'Skipping ✓' : 'Skip vote', onclick: () => { W.vote = 'skip'; emit('ww_vote', { target: 'skip' }); A.render(); } }));
@@ -140,14 +140,13 @@
   PHASES.lynch = (room, r, ctx) => {
     const l = r.lynch;
     const out = [];
-    if (l.id) out.push(el('div', { class: 'ww-death' + (l.role === 'Werewolf' ? ' wolf' : '') }, [el('div', { class: 'big', text: `${l.name} was voted out.` }), el('div', { text: `They were a ${l.role}.` })]));
+    if (l.id) out.push(el('div', { class: 'ww-death' }, [el('div', { class: 'big', text: `${l.name} was voted out.` }), el('div', { text: 'Were they a Werewolf? You\'ll find out at the end.' })]));
     else out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'Nobody was voted out.' }), el('div', { text: l.reason === 'tie' ? 'The vote was tied.' : 'The village skipped.' })]));
     if (l.counts.length) {
       const list = el('div', { class: 'role-reveal-list' });
       l.counts.forEach(c => list.appendChild(el('div', { class: 'role-reveal-row' }, [el('span', { text: c.name }), el('span', { class: 'tag civilian', text: `${c.n} vote${c.n === 1 ? '' : 's'}` })])));
       out.push(list);
     }
-    out.push(note(`${r.wolvesLeft} Werewol${r.wolvesLeft === 1 ? 'f remains' : 'ves remain'}.`));
     out.push(el('div', { class: 'spacer' }));
     out.push(ctx.isHost ? hostBtn('Night falls…') : note('Waiting for the host.'));
     return out;
@@ -159,8 +158,8 @@
       el('h2', { text: wolves ? '🐺 The Werewolves win' : '🧑‍🌾 The Village wins' }),
       el('p', { style: 'margin-bottom:0', text: wolves ? 'The wolves now equal the village.' : 'Every Werewolf has been found.' })
     ])];
-    if (r.dawn && r.dawn.victimName) out.push(note(`Last night: ${r.dawn.victimName} (${r.dawn.victimRole}) was killed.`));
-    if (r.lynch && r.lynch.id) out.push(note(`Voted out: ${r.lynch.name} (${r.lynch.role}).`));
+    if (r.dawn && r.dawn.victimName) out.push(note(`Last night: ${r.dawn.victimName} was killed.`));
+    if (r.lynch && r.lynch.id) out.push(note(`Voted out: ${r.lynch.name}.`));
     const list = el('div', { class: 'role-reveal-list' });
     r.players.forEach(p => list.appendChild(el('div', { class: 'role-reveal-row' }, [
       el('span', { text: (p.alive ? '' : '💀 ') + p.name }),

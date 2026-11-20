@@ -212,14 +212,13 @@ function publicState(room) {
     dayNum: r.dayNum,
     players: Object.keys(r.names).filter(id => room.players.some(p => p.id === id) || r.roles[id]).map(id => ({
       id, name: r.names[id], alive: r.alive.includes(id),
-      role: (!r.alive.includes(id) || r.phase === 'results') ? ROLE_NAMES[r.roles[id]] : null
+      role: r.phase === 'results' ? ROLE_NAMES[r.roles[id]] : null   // roles stay secret until the game ends
     })),
     nightDoneCount: r.night ? r.night.done.length : 0,
     aliveCount: r.alive.length,
-    dawn: r.dawn,
+    dawn: r.dawn ? { victimName: r.dawn.victimName, saved: r.dawn.saved, noKill: r.dawn.noKill, suspect: r.dawn.suspect } : null,
     votedIds: r.phase === 'day' ? Object.keys(r.votes) : [],
-    lynch: r.lynch,
-    wolvesLeft: aliveWolves(r).length,
+    lynch: r.lynch ? { id: r.lynch.id, name: r.lynch.name, reason: r.lynch.reason, counts: r.lynch.counts } : null,
     result: r.result
   };
   return s;
