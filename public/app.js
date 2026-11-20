@@ -27,7 +27,21 @@
     const y = window.scrollY;
     const focusedId = document.activeElement && document.activeElement.id;
     root.innerHTML = '';
-    (VIEWS[state.view] || VIEWS.home)();
+    try {
+      if (!VIEWS[state.view]) {
+        if (state.code) throw new Error('No screen for view "' + state.view + '" (app may be out of date)');
+        VIEWS.home();
+      } else VIEWS[state.view]();
+    } catch (err) {
+      reportError(err, 'render:' + state.view);
+      root.innerHTML = '';
+      root.appendChild(el('div', { class: 'screen' }, [
+        el('h2', { text: 'Something went wrong on this screen.' }),
+        el('p', { text: 'You\u2019re still in the game. Tap below to reload and rejoin.' }),
+        el('button', { class: 'primary', text: 'Reload', onclick: () => location.reload() })
+      ]));
+      return;
+    }
     window.scrollTo(0, y);
     if (focusedId) {
       const f = document.getElementById(focusedId);
@@ -142,6 +156,19 @@
       goHome();
     }
   }
+
+  // Send client-side errors to the server log so bugs on real phones can be diagnosed.
+  function reportError(err, where) {
+    try {
+      socket.emit('client_error', {
+        where, message: String(err && err.message || err), stack: String(err && err.stack || '').slice(0, 800),
+        view: state.view, game: state.room && state.room.round && state.room.round.game,
+        phase: state.room && state.room.round && state.room.round.phase, ua: navigator.userAgent
+      });
+    } catch (e) { /* ignore */ }
+  }
+  window.addEventListener('error', (e) => reportError(e.error || e.message, 'window'));
+  window.addEventListener('unhandledrejection', (e) => reportError(e.reason, 'promise'));
 
   function goHome() {
     clearSession();

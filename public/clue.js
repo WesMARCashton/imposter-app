@@ -196,7 +196,7 @@
       if (C.forceAccuse) { out.push(...myTurnControls(r).slice(2)); }
     } else {
       out.push(el('h2', { text: s.nobody ? 'Nobody could disprove it!' : `${s.shownByName} showed ${s.byName} a card.` }));
-      if (me.shownByMe && s.shownByName && me.shownByMe.to === s.byName && s.shownByName === A.state.room.players.find(p => p.id === ctx.me)?.name) {
+      if (me.shownByMe && s.shownByName && me.shownByMe.to === s.byName && s.shownByName === ((A.state.room.players.find(p => p.id === ctx.me) || {}).name)) {
         out.push(note(`You showed: ${names[me.shownByMe.card]}`));
       }
       out.push(note(`Waiting for ${s.byName} to end their turn.`));

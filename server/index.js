@@ -285,6 +285,10 @@ io.on('connection', (socket) => {
     broadcastRoom(code);
   });
 
+  socket.on('client_error', (info) => {
+    try { console.error('[client_error]', JSON.stringify(info).slice(0, 1500)); } catch (e) { /* ignore */ }
+  });
+
   // ---- Clue ----
   const clueAction = (ev, fn, hostOnly) => socket.on(ev, (d) => {
     const room = d && rooms[d.code];
