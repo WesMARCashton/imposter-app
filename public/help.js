@@ -85,6 +85,28 @@
         ]]
       ]
     },
+    target: {
+      name: 'Hit the Number',
+      players: '3+ players \u00b7 played on a real game (Bocce, Shuffleboard\u2026)',
+      goal: 'Crew: land on the secret target score and spot the Imposter. Imposter: blend in without knowing the number.',
+      sections: [
+        ['Setup', [
+          'The host picks the game you\u2019re playing and the score range (e.g. 3\u201310).',
+          'Everyone gets the same secret target score, except the Imposter, who only knows the range.',
+          'Press and hold your card to see it. Don\u2019t say your number out loud.'
+        ]],
+        ['Play', [
+          'Play the real game. Try to finish with exactly your target score.',
+          'The Imposter has to guess what everyone is aiming for and act natural.',
+          'Watch for anyone who seems to be playing for a different score.'
+        ]],
+        ['Vote', [
+          'When the game ends, the host opens the vote. Everyone votes for who they think was the Imposter.',
+          'Wrong person or a tie = Imposter wins.',
+          'If the Imposter is caught, they get one guess at the exact number. Right = they steal the win.'
+        ]]
+      ]
+    },
     clue: {
       name: 'Clue',
       players: '3\u20136 players \u00b7 about 15\u201325 min',
