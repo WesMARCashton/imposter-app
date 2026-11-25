@@ -342,7 +342,7 @@
         el('div', { class: 'error-text', text: state.error })
       ]));
     } else if (isHost && game === 'werewolf') {
-      const ws = room.settings.werewolf || { wolves: 0, seer: true, doctor: true };
+      const ws = room.settings.werewolf || { wolves: 0, seer: true, doctor: true, hunt: 45 };
       const set = (patch) => updateSettings({ werewolf: { ...ws, ...patch } });
       children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Werewolves' }), el('div', { class: 'sub', text: 'Auto = 1 for 5\u20136 players, 2 for 7\u20139, 3 for 10+' })])]));
       const wt = el('div', { class: 'diff-tabs' });
@@ -358,6 +358,10 @@
       children.push(el('div', { style: 'height:10px' }));
       children.push(toggle('Seer', 'Checks one player each night', 'seer'));
       children.push(toggle('Doctor', 'Protects one player each night', 'doctor'));
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Hunt timer' }), el('div', { class: 'sub', text: 'Night ends when time runs out. Wolves still split = the hunt fails.' })])]));
+      const ht = el('div', { class: 'diff-tabs' });
+      [[0, 'Off'], [30, '30s'], [45, '45s'], [60, '60s']].forEach(([v, t]) => ht.appendChild(el('button', { class: (ws.hunt == null ? 45 : ws.hunt) === v ? 'active' : '', text: t, onclick: () => set({ hunt: v }) })));
+      children.push(ht);
       children.push(el('div', { style: 'height:12px' }));
       children.push(startBtn('Start Werewolf'));
     } else if (isHost && game === 'calledshot') {

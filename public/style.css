@@ -581,3 +581,15 @@ input#tg-guess { font-family: var(--font-display); font-size: 32px; text-align: 
 .ww-pack.bad { border-color: var(--danger); background: rgba(194,73,73,0.15); }
 .ww-pack.wait { border-color: var(--amber); background: var(--amber-dim); }
 .ww-pack-row { color: var(--muted); font-size: 13px; }
+.ww-timer { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-top: 4px; }
+.ww-chat { border: 1px solid #5b6080; background: rgba(40,48,90,0.35); border-radius: 14px; padding: 10px; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.ww-chat-title { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: #b9bde0; }
+.ww-chat-log { display: flex; flex-direction: column; gap: 4px; max-height: 170px; overflow-y: auto; }
+.ww-chat-empty { font-size: 13px; color: var(--muted); }
+.ww-msg { font-size: 14px; background: var(--surface); border-radius: 10px; padding: 6px 10px; align-self: flex-start; max-width: 90%; }
+.ww-msg.me { align-self: flex-end; background: rgba(194,73,73,0.25); }
+.ww-chat-sub { font-size: 11px; color: var(--muted); }
+.ww-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ww-chip { font-size: 12.5px; padding: 7px 10px; border-radius: 999px; background: var(--surface); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+.ww-chip.on { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+.ww-chip.act { border-color: #8a5bd0; }

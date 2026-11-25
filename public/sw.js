@@ -1,4 +1,4 @@
-const CACHE = 'undercover-v22';
+const CACHE = 'undercover-v23';
 const ASSETS = ['/', '/style.css', '/app.js', '/weasel.js', '/offmap-questions.js', '/offmap.js', '/amongus.js', '/clue.js', '/target.js', '/werewolf.js', '/calledshot.js', '/help.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
