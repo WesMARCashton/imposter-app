@@ -70,7 +70,11 @@ function privateState(room, id) {
   if (n) {
     out.nightDone = n.done.includes(id);
     out.nightPick = n.picks[id] || null;
-    if (role === 'wolf') out.wolfVotes = Object.entries(n.picks).filter(([k]) => isWolf(r, k)).map(([k, v]) => ({ wolf: r.names[k], target: r.names[v] }));
+    if (role === 'wolf') {
+      out.wolfVotes = aliveWolves(r).map(w => ({ wolf: r.names[w], wolfId: w, target: n.picks[w] ? r.names[n.picks[w]] : null, targetId: n.picks[w] || null }));
+      out.packAgreed = packAgreed(r);
+      out.packSize = aliveWolves(r).length;
+    }
   }
   return out;
 }
@@ -102,9 +106,23 @@ function nightPick(room, id, target) {
   if (role === 'doctor' && target === r.lastProtected) return;
   if (role === 'seer' && r.night.done.includes(id)) return; // one look per night
   r.night.picks[id] = target;
-  if (!r.night.done.includes(id)) r.night.done.push(id);
+  if (role === 'wolf') updatePack(r);
+  else if (!r.night.done.includes(id)) r.night.done.push(id);
   if (role === 'seer') r.seerResults.push({ night: r.dayNum + 1, name: r.names[target], isWolf: isWolf(r, target) });
   if (r.alive.every(x => r.night.done.includes(x))) resolveNight(room);
+}
+
+// The pack only counts as done once every living Werewolf has picked the SAME player.
+function packAgreed(r) {
+  const wolves = aliveWolves(r);
+  if (!wolves.length) return true;
+  const picks = wolves.map(w => r.night.picks[w]);
+  return picks.every(Boolean) && new Set(picks).size === 1;
+}
+function updatePack(r) {
+  const wolves = aliveWolves(r);
+  r.night.done = r.night.done.filter(x => !wolves.includes(x));
+  if (packAgreed(r)) r.night.done.push(...wolves);
 }
 
 function plurality(map) {
@@ -198,7 +216,7 @@ function onPlayerRemoved(room, id) {
   r.alive = r.alive.filter(x => x !== id);
   delete r.votes[id];
   Object.keys(r.votes).forEach(v => { if (r.votes[v] === id) delete r.votes[v]; });
-  if (r.night) { delete r.night.picks[id]; r.night.done = r.night.done.filter(x => x !== id); }
+  if (r.night) { delete r.night.picks[id]; r.night.done = r.night.done.filter(x => x !== id); updatePack(r); }
   checkWin(room);
   if (r.phase === 'night' && r.alive.length && r.alive.every(x => r.night.done.includes(x))) resolveNight(room);
   if (r.phase === 'day' && r.alive.length && r.alive.every(x => r.votes[x])) tallyDay(room);

@@ -79,7 +79,17 @@
         villager: 'Who do you suspect? (Keeps everyone tapping. Top suspect is announced at dawn.)'
       };
       out.push(el('h2', { text: prompts[me.role] }));
-      if (me.role === 'wolf' && me.wolfVotes.length) out.push(note('Pack votes: ' + me.wolfVotes.map(v => `${v.wolf} → ${v.target}`).join(', ')));
+      if (me.role === 'wolf' && me.packSize > 1) {
+        const picked = me.wolfVotes.filter(v => v.target);
+        let status, cls;
+        if (me.packAgreed) { status = `✓ Pack agrees: ${me.wolfVotes[0].target}. Waiting for the rest of the village…`; cls = 'ok'; }
+        else if (picked.length < me.packSize) { status = `Your pack must all pick the same person. ${picked.length}/${me.packSize} wolves have picked.`; cls = 'wait'; }
+        else { status = 'Your pack disagrees! Change picks until you all match.'; cls = 'bad'; }
+        out.push(el('div', { class: 'ww-pack ' + cls }, [
+          el('div', { class: 'ww-pack-status', text: status }),
+          ...me.wolfVotes.map(v => el('div', { class: 'ww-pack-row', text: `🐺 ${v.wolf}: ${v.target || '…'}` }))
+        ]));
+      }
       const grid = el('div', { class: 'vote-grid' });
       r.players.filter(p => p.alive).forEach(p => {
         let disabled = false;
@@ -89,12 +99,17 @@
         const opt = el('div', {
           class: 'vote-option' + (W.pick === p.id ? ' selected' : '') + (disabled ? ' au-dead' : ''),
           onclick: () => { if (disabled) return; W.pick = p.id; A.render(); }
-        }, [el('span', { text: p.name + (p.id === ctx.me ? ' (you)' : '') }), disabled && me.role === 'doctor' ? el('span', { class: 'count', text: 'protected last night' }) : null]);
+        }, [
+          el('span', { text: p.name + (p.id === ctx.me ? ' (you)' : '') }),
+          disabled && me.role === 'doctor' ? el('span', { class: 'count', text: 'protected last night' }) : null,
+          me.role === 'wolf' && me.packSize > 1 ? el('span', { class: 'count', text: me.wolfVotes.filter(v => v.targetId === p.id).map(v => '🐺 ' + v.wolf).join(' ') }) : null
+        ]);
         grid.appendChild(opt);
       });
       out.push(grid);
-      const b = el('button', { class: 'primary', text: me.role === 'wolf' && me.nightDone ? 'Change pick' : 'Confirm', onclick: () => emit('ww_night', { target: W.pick }) });
-      if (!W.pick) b.disabled = true;
+      const myPick = me.nightPick;
+      const b = el('button', { class: 'primary', text: me.role === 'wolf' && myPick ? (W.pick === myPick ? 'Your pick is in' : 'Change my pick') : 'Confirm', onclick: () => emit('ww_night', { target: W.pick }) });
+      if (!W.pick || (me.role === 'wolf' && W.pick === myPick)) b.disabled = true;
       out.push(b);
     }
     out.push(el('div', { class: 'progress-pill', text: `${r.nightDoneCount}/${r.aliveCount} done` }));
