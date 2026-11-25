@@ -2,7 +2,42 @@
 (function () {
   const A = window.App;
   const { el, socket } = A;
-  const W = A.state.ww = { me: null, pick: null, vote: null, key: '' };
+  const W = A.state.ww = { me: null, pick: null, vote: null, key: '', chatTarget: null, skew: 0 };
+
+  // Night countdown (server time -> local)
+  const fmt = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  setInterval(() => {
+    const n = document.getElementById('ww-timer');
+    const r = A.state.room && A.state.room.round;
+    if (n && r && r.nightEndsAt) n.textContent = '⏳ ' + fmt(r.nightEndsAt - (Date.now() + W.skew));
+  }, 250);
+  socket.on('room_update', (room) => { const r = room && room.round; if (r && r.game === 'werewolf' && r.serverNow) W.skew = r.serverNow - Date.now(); });
+
+  function packChat(r, me) {
+    const box = el('div', { class: 'ww-chat' }, [el('div', { class: 'ww-chat-title', text: '🐺 Pack chat (only wolves see this)' })]);
+    const log = el('div', { class: 'ww-chat-log' });
+    const msgs = (me.chat || []).slice(-8);
+    if (!msgs.length) log.appendChild(el('div', { class: 'ww-chat-empty', text: 'No messages yet. Tap below.' }));
+    msgs.forEach(m => log.appendChild(el('div', { class: 'ww-msg' + (m.fromId === A.state.playerId ? ' me' : '') }, [el('b', { text: m.fromId === A.state.playerId ? 'You' : m.from }), el('span', { text: ' ' + m.text })])));
+    box.appendChild(log);
+    const quick = el('div', { class: 'ww-chips' });
+    (me.quick || []).forEach(q => quick.appendChild(el('button', { class: 'ww-chip', text: q, onclick: () => emit('ww_chat', { msg: { kind: 'quick', text: q } }) })));
+    box.appendChild(quick);
+    box.appendChild(el('div', { class: 'ww-chat-sub', text: 'About a player: tap a name, then what they are' }));
+    const ppl = el('div', { class: 'ww-chips' });
+    r.players.filter(p => p.alive && !me.wolves.includes(p.name) && p.id !== A.state.playerId).forEach(p => ppl.appendChild(el('button', {
+      class: 'ww-chip' + (W.chatTarget === p.id ? ' on' : ''), text: p.name, onclick: () => { W.chatTarget = W.chatTarget === p.id ? null : p.id; A.render(); }
+    })));
+    box.appendChild(ppl);
+    if (W.chatTarget) {
+      const acts = el('div', { class: 'ww-chips' });
+      [['go', '🎯 Go for them'], ['seer', 'is the Seer?'], ['doctor', 'is the Doctor?'], ['villager', 'just a Villager'], ['suspects', 'suspects us'], ['spare', 'leave them']].forEach(([a, label]) => acts.appendChild(el('button', {
+        class: 'ww-chip act', text: label, onclick: () => { emit('ww_chat', { msg: { kind: 'build', action: a, targetId: W.chatTarget } }); W.chatTarget = null; A.render(); }
+      })));
+      box.appendChild(acts);
+    }
+    return box;
+  }
 
   const emit = (ev, extra) => socket.emit(ev, Object.assign({ code: A.state.code, playerId: A.state.playerId }, extra || {}));
   const note = (text) => el('p', { class: 'center-note', text });
@@ -63,7 +98,11 @@
 
   PHASES.night = (room, r, ctx) => {
     const me = W.me;
-    const out = [el('div', { class: 'ww-banner night' }, [el('div', { class: 'big', text: '🌙 Night ' + (r.dayNum + 1) }), el('div', { text: 'Everyone taps something. Shield your screen.' })])];
+    const out = [el('div', { class: 'ww-banner night' }, [
+      el('div', { class: 'big', text: '🌙 Night ' + (r.dayNum + 1) }),
+      el('div', { text: 'Everyone taps something. Shield your screen.' }),
+      r.nightEndsAt ? el('div', { class: 'ww-timer', id: 'ww-timer', text: '⏳ ' + fmt(r.nightEndsAt - (Date.now() + W.skew)) }) : null
+    ])];
     if (!me) return out;
     if (!me.alive) { out.push(el('h2', { text: 'You\'re dead.' }), note('Watch quietly.')); }
     else if (me.nightDone && me.role !== 'wolf') {
@@ -82,14 +121,16 @@
       if (me.role === 'wolf' && me.packSize > 1) {
         const picked = me.wolfVotes.filter(v => v.target);
         let status, cls;
+        const fail = r.nightEndsAt ? ' If time runs out first, the hunt fails.' : '';
         if (me.packAgreed) { status = `✓ Pack agrees: ${me.wolfVotes[0].target}. Waiting for the rest of the village…`; cls = 'ok'; }
-        else if (picked.length < me.packSize) { status = `Your pack must all pick the same person. ${picked.length}/${me.packSize} wolves have picked.`; cls = 'wait'; }
-        else { status = 'Your pack disagrees! Change picks until you all match.'; cls = 'bad'; }
+        else if (picked.length < me.packSize) { status = `Your pack must all pick the same person. ${picked.length}/${me.packSize} wolves have picked.${fail}`; cls = 'wait'; }
+        else { status = `Your pack disagrees! Change picks until you all match.${fail}`; cls = 'bad'; }
         out.push(el('div', { class: 'ww-pack ' + cls }, [
           el('div', { class: 'ww-pack-status', text: status }),
           ...me.wolfVotes.map(v => el('div', { class: 'ww-pack-row', text: `🐺 ${v.wolf}: ${v.target || '…'}` }))
         ]));
       }
+      if (me.role === 'wolf' && me.packSize > 1) out.push(packChat(r, me));
       const grid = el('div', { class: 'vote-grid' });
       r.players.filter(p => p.alive).forEach(p => {
         let disabled = false;
@@ -123,7 +164,7 @@
     const out = [el('div', { class: 'ww-banner day' }, [el('div', { class: 'big', text: '☀️ Day ' + r.dayNum })])];
     if (d.victimName) out.push(el('div', { class: 'ww-death' }, [el('div', { class: 'big', text: `${d.victimName} was killed.` }), el('div', { text: 'Their role stays secret until the end.' })]));
     else if (d.saved) out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'Nobody died!' }), el('div', { text: 'The Doctor saved someone last night.' })]));
-    else out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'A quiet night.' }), el('div', { text: 'Nobody was attacked.' })]));
+    else out.push(el('div', { class: 'ww-death saved' }, [el('div', { class: 'big', text: 'A quiet night.' }), el('div', { text: 'Nobody died.' })]));
     if (d.suspect) out.push(note(`The village was most suspicious of ${d.suspect} last night.`));
     out.push(playerList(r));
     out.push(el('div', { class: 'spacer' }));

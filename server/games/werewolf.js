@@ -7,14 +7,28 @@ const { shuffle } = require('../util');
 const MIN_PLAYERS = 5;
 const ROLE_NAMES = { wolf: 'Werewolf', seer: 'Seer', doctor: 'Doctor', villager: 'Villager' };
 
-let io = null;
-function init(socketIo) { io = socketIo; }
+const HUNT_OPTIONS = [0, 30, 45, 60];
+// Pack chat: tap-only messages (no typing) so it's fast and quiet at the table
+const QUICK = ['Agreed 👍', 'No, too obvious', 'They suspect me', 'Lay low tonight', 'Trust me', 'Hurry up! ⏳', 'Your call'];
+const BUILD = {
+  go: (n) => `Go for ${n}`,
+  seer: (n) => `${n} is the Seer?`,
+  doctor: (n) => `${n} is the Doctor?`,
+  villager: (n) => `${n} is just a Villager`,
+  suspects: (n) => `${n} suspects us`,
+  spare: (n) => `Leave ${n} alone`
+};
 
-function defaultSettings() { return { wolves: 0, seer: true, doctor: true }; }
+let io = null;
+let broadcast = () => {};
+function init(socketIo, broadcastFn) { io = socketIo; if (broadcastFn) broadcast = broadcastFn; }
+
+function defaultSettings() { return { wolves: 0, seer: true, doctor: true, hunt: 45 }; }
 function sanitizeSettings(s) {
   s = s || {};
   const w = parseInt(s.wolves, 10);
-  return { wolves: [0, 1, 2, 3].includes(w) ? w : 0, seer: s.seer !== false, doctor: s.doctor !== false };
+  const h = parseInt(s.hunt, 10);
+  return { wolves: [0, 1, 2, 3].includes(w) ? w : 0, seer: s.seer !== false, doctor: s.doctor !== false, hunt: HUNT_OPTIONS.includes(h) ? h : 45 };
 }
 const autoWolves = (n) => (n >= 10 ? 3 : n >= 7 ? 2 : 1);
 
@@ -37,6 +51,8 @@ function start(room) {
   room.round = {
     game: 'werewolf',
     phase: 'reveal',
+    huntSecs: s.hunt,
+    timer: null,
     roles,
     names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
     alive: room.players.map(p => p.id),
@@ -71,6 +87,8 @@ function privateState(room, id) {
     out.nightDone = n.done.includes(id);
     out.nightPick = n.picks[id] || null;
     if (role === 'wolf') {
+      out.chat = n.chat.slice(-30);
+      out.quick = QUICK;
       out.wolfVotes = aliveWolves(r).map(w => ({ wolf: r.names[w], wolfId: w, target: n.picks[w] ? r.names[n.picks[w]] : null, targetId: n.picks[w] || null }));
       out.packAgreed = packAgreed(r);
       out.packSize = aliveWolves(r).length;
@@ -90,11 +108,32 @@ function resendPrivate(room, id) {
 }
 
 // ---------- night ----------
+function clearTimer(r) { if (r.timer) { clearTimeout(r.timer); r.timer = null; } }
+function cleanup(room) { if (room.round && room.round.game === 'werewolf') clearTimer(room.round); }
+
 function startNight(room) {
   const r = room.round;
-  r.night = { picks: {}, done: [] };
+  clearTimer(r);
+  r.night = { picks: {}, done: [], chat: [], endsAt: r.huntSecs ? Date.now() + r.huntSecs * 1000 : null };
   r.dawn = null; r.lynch = null; r.votes = {};
   r.phase = 'night';
+  if (r.huntSecs) {
+    const night = r.night;
+    r.timer = setTimeout(() => {
+      if (room.round === r && r.phase === 'night' && r.night === night) { resolveNight(room); broadcast(room.code); }
+    }, r.huntSecs * 1000);
+  }
+}
+
+function packChat(room, id, msg) {
+  const r = room.round;
+  if (!r || r.phase !== 'night' || !isWolf(r, id) || !r.alive.includes(id) || !msg) return;
+  let text = null;
+  if (msg.kind === 'quick' && QUICK.includes(msg.text)) text = msg.text;
+  if (msg.kind === 'build' && BUILD[msg.action] && r.alive.includes(msg.targetId)) text = BUILD[msg.action](r.names[msg.targetId]);
+  if (!text) return;
+  r.night.chat.push({ from: r.names[id], fromId: id, text, t: Date.now() });
+  if (r.night.chat.length > 50) r.night.chat.shift();
 }
 
 function nightPick(room, id, target) {
@@ -143,8 +182,9 @@ function resolveNight(room) {
     else if (r.roles[k] === 'doctor') doctorPick = v;
     else if (r.roles[k] === 'villager') villagerPicks[k] = v;
   });
-  const { top } = plurality(wolfPicks);
-  const victim = top.length ? shuffle(top)[0] : null;   // wolves split = random pick among their top choices
+  // The pack must agree. If they're still split (timer ran out / host ended the night), the hunt fails.
+  const agreed = packAgreed(r) && aliveWolves(r).length > 0;
+  const victim = agreed ? r.night.picks[aliveWolves(r)[0]] : null;
   r.lastProtected = doctorPick;
   r.dayNum++;
   const sus = plurality(villagerPicks).top;
@@ -158,7 +198,9 @@ function resolveNight(room) {
     r.alive = r.alive.filter(x => x !== victim);
     Object.assign(r.dawn, { victimId: victim, victimName: r.names[victim], victimRole: ROLE_NAMES[r.roles[victim]] });
   }
+  r.huntFailed = !agreed;   // kept server-side only; the village just sees a quiet night
   r.night = null;
+  clearTimer(r);
   r.phase = 'dawn';
   checkWin(room);
 }
@@ -195,6 +237,7 @@ function checkWin(room) {
 
 function finish(room, winner) {
   const r = room.round;
+  clearTimer(r);
   r.result = { winner };
   // keep dawn/lynch info so the final screen can show what just happened
   r.phase = 'results';
@@ -233,6 +276,8 @@ function publicState(room) {
       role: r.phase === 'results' ? ROLE_NAMES[r.roles[id]] : null   // roles stay secret until the game ends
     })),
     nightDoneCount: r.night ? r.night.done.length : 0,
+    nightEndsAt: r.night ? r.night.endsAt : null,
+    serverNow: Date.now(),
     aliveCount: r.alive.length,
     dawn: r.dawn ? { victimName: r.dawn.victimName, saved: r.dawn.saved, noKill: r.dawn.noKill, suspect: r.dawn.suspect } : null,
     votedIds: r.phase === 'day' ? Object.keys(r.votes) : [],
@@ -243,6 +288,6 @@ function publicState(room) {
 }
 
 module.exports = {
-  init, defaultSettings, sanitizeSettings, start, advance, nightPick, dayVote,
+  init, defaultSettings, sanitizeSettings, start, advance, nightPick, dayVote, packChat, cleanup,
   resendPrivate, syncPrivate, onPlayerRemoved, publicState, MIN_PLAYERS
 };

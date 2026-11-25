@@ -21,7 +21,7 @@ offmap.init(io, (code) => broadcastRoom(code));
 amongus.init(io, (code) => broadcastRoom(code));
 clue.init(io);
 target.init(io);
-werewolf.init(io);
+werewolf.init(io, (code) => broadcastRoom(code));
 calledshot.init(io);
 const MODULES = { weasel, offmap, amongus, clue, target, werewolf, calledshot };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
@@ -309,6 +309,7 @@ io.on('connection', (socket) => {
   modAction('werewolf', 'ww_advance', (room) => werewolf.advance(room), true);
   modAction('werewolf', 'ww_night', (room, d) => werewolf.nightPick(room, d.playerId, d.target));
   modAction('werewolf', 'ww_vote', (room, d) => werewolf.dayVote(room, d.playerId, d.target));
+  modAction('werewolf', 'ww_chat', (room, d) => werewolf.packChat(room, d.playerId, d.msg));
   modAction('calledshot', 'cs_call', (room, d) => calledshot.callShot(room, d.playerId, d.option));
   modAction('calledshot', 'cs_bet', (room, d) => calledshot.bet(room, d.playerId, d.choice));
   modAction('calledshot', 'cs_report', (room, d, isHost) => calledshot.report(room, d.playerId, !!d.hit, isHost));

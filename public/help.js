@@ -98,8 +98,9 @@
         ]],
         ['Night', [
           'Everyone taps something on their phone, so nobody can tell who has a power. Villagers mark who they suspect.',
-          'Werewolves see each other\u2019s picks live and must ALL pick the same player before the night can end. (If they can\u2019t agree, the host can end the night and the app picks among their choices.)',
-          'The night ends when everyone has tapped (or the host ends it).'
+          'Werewolves must ALL pick the same player. They see each other\u2019s picks live and have a private Pack chat (tap-only: "Go for Sam", "Riley is the Doctor?", "Agreed \ud83d\udc4d"\u2026).',
+          'Hunt timer (host setting, default 45s): when it runs out the night ends. If the pack still hasn\u2019t agreed, the hunt fails and nobody dies \u2014 the village just sees a quiet night.',
+          'The night ends early once everyone has tapped and the pack agrees (or the host ends it).'
         ]],
         ['Day', [
           'Dawn reveals who died (not their role), or that the Doctor saved someone. The village\u2019s top suspect is announced too.',
