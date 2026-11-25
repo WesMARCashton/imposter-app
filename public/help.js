@@ -98,7 +98,7 @@
         ]],
         ['Night', [
           'Everyone taps something on their phone, so nobody can tell who has a power. Villagers mark who they suspect.',
-          'Werewolves see each other\u2019s picks. If they split, the app picks one of their top choices.',
+          'Werewolves see each other\u2019s picks live and must ALL pick the same player before the night can end. (If they can\u2019t agree, the host can end the night and the app picks among their choices.)',
           'The night ends when everyone has tapped (or the host ends it).'
         ]],
         ['Day', [

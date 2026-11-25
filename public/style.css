@@ -575,3 +575,9 @@ input#tg-guess { font-family: var(--font-display); font-size: 32px; text-align: 
 .cs-reveal.miss { border-color: var(--danger); background: rgba(194,73,73,0.18); }
 .cs-scores .cs-now { border-color: var(--amber); }
 .cs-scores.compact .role-reveal-row { padding: 8px 12px; }
+.ww-pack { border-radius: 12px; padding: 10px 12px; margin: 0 0 12px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.ww-pack-status { font-weight: 700; }
+.ww-pack.ok { border-color: var(--safe); background: rgba(75,158,122,0.15); }
+.ww-pack.bad { border-color: var(--danger); background: rgba(194,73,73,0.15); }
+.ww-pack.wait { border-color: var(--amber); background: var(--amber-dim); }
+.ww-pack-row { color: var(--muted); font-size: 13px; }
