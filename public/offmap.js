@@ -76,6 +76,30 @@
     setTimeout(() => f.remove(), 1600);
   }
 
+  const WEASEL_SVG = `
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="Weasel">
+  <defs><clipPath id="wz-clip"><circle cx="60" cy="60" r="55"/></clipPath></defs>
+  <circle cx="60" cy="60" r="57" fill="#2A0F12" stroke="#C24949" stroke-width="4"/>
+  <g clip-path="url(#wz-clip)">
+    <path d="M30 124 Q34 92 60 89 Q86 92 90 124 Z" fill="#9A5B2E"/>
+    <path d="M46 124 Q48 98 60 96 Q72 98 74 124 Z" fill="#F3E3C6"/>
+  </g>
+  <circle cx="35" cy="33" r="11" fill="#9A5B2E"/><circle cx="35" cy="33" r="5.5" fill="#E2A98C"/>
+  <circle cx="85" cy="33" r="11" fill="#9A5B2E"/><circle cx="85" cy="33" r="5.5" fill="#E2A98C"/>
+  <path d="M60 22 C84 22 94 40 92 56 C90 74 76 90 60 92 C44 90 30 74 28 56 C26 40 36 22 60 22 Z" fill="#9A5B2E"/>
+  <path d="M38 66 C44 60 52 62 60 64 C68 62 76 60 82 66 C80 80 70 90 60 90 C50 90 40 80 38 66 Z" fill="#F3E3C6"/>
+  <path d="M30 50 C40 42 50 46 60 50 C70 46 80 42 90 50 C88 60 78 62 70 58 C66 56 62 56 60 57 C58 56 54 56 50 58 C42 62 32 60 30 50 Z" fill="#2A1A10"/>
+  <ellipse cx="46" cy="52" rx="5" ry="3" fill="#F7D25A"/><circle cx="47.5" cy="52" r="1.8" fill="#111"/>
+  <ellipse cx="74" cy="52" rx="5" ry="3" fill="#F7D25A"/><circle cx="75.5" cy="52" r="1.8" fill="#111"/>
+  <path d="M38 43 L53 47" stroke="#2A1A10" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M82 43 L67 47" stroke="#2A1A10" stroke-width="3.2" stroke-linecap="round"/>
+  <ellipse cx="60" cy="68" rx="5" ry="3.5" fill="#2A1A10"/>
+  <path d="M52 76 Q60 80 69 73" fill="none" stroke="#2A1A10" stroke-width="2.4" stroke-linecap="round"/>
+  <g stroke="#2A1A10" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+    <path d="M44 70 L26 66"/><path d="M44 73 L27 76"/><path d="M76 70 L94 66"/><path d="M76 73 L93 76"/>
+  </g>
+</svg>`;
+  A.WEASEL_SVG = WEASEL_SVG;
   const svgBox = (markup, cls) => { const d = el('div', { class: cls }); d.innerHTML = markup; return d; };
   const note = (text) => el('p', { class: 'center-note', text });
   const hostBtn = (text, cls) => el('button', { class: cls || 'primary', text, onclick: () => socket.emit('om_advance', { code: A.state.code, playerId: A.state.playerId }) });
@@ -88,7 +112,7 @@
     card.appendChild(hint);
     card.appendChild(el('div', { class: 'content blank' }, [el('div', { class: 'role-word', text: '?' })]));
     card.appendChild(el('div', { class: 'content secret' }, [
-      svgBox(role.spy ? (A.WEASEL_SVG || SPY_SVG) : PIN_SVG, 'role-logo'),
+      svgBox(role.spy ? WEASEL_SVG : PIN_SVG, 'role-logo'),
       el('div', { class: 'role-label' + (role.spy ? ' weasel' : ' om'), text: role.spy ? 'YOU ARE THE WEASEL' : 'LOCATION' }),
       el('div', { class: 'role-word', text: role.spy ? '???' : role.location }),
       el('div', { class: 'category-tag', text: role.spy ? 'Figure out where everyone is.' : 'Your job: ' + role.job })
@@ -236,7 +260,7 @@
         el('h2', { text: spyWon ? 'The Weasel wins' : 'Crew wins' }),
         el('p', { style: 'margin-bottom:0', text: reason })
       ]),
-      svgBox(A.WEASEL_SVG || SPY_SVG, 'w-final-logo om-final-logo'),
+      svgBox(WEASEL_SVG, 'w-final-logo om-final-logo'),
       el('div', { class: 'om-answer' }, [
         el('div', { class: 'label-sm', text: 'The location was' }),
         el('div', { class: 'om-answer-loc', text: res.location }),

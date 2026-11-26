@@ -1,6 +1,6 @@
 # Office Shenanigans
 
-Office party games (Undercover, Inside Job, The Weasel, Among Us, Clue, Hit the Number).
+Office party games (Undercover, The Weasel, Clue, Werewolf, Hit the Number, Called Shot).
 
 ## Stack
 - Node/Express + Socket.io (realtime rooms, in-memory state)
@@ -15,15 +15,6 @@ Office party games (Undercover, Inside Job, The Weasel, Among Us, Clue, Hit the 
 - Mr. White steal-the-win guess
 - Reconnect on disconnect (phone lock / dropped wifi) via localStorage session
 
-## Inside Job
-One secret Spy (min 4 players). Internal id is still `weasel` (settings, socket events, files).. Each round:
-1. **Mission** on everyone's phone — Brain Trust (trivia), Mind Meld (match the group), Ballpark (number guess), The Vault (random team picks Crack/Jam). Success grows the pot; the Spy quietly sabotages.
-2. **Quiz** — 5 questions about the Spy (who is it, what did they answer in past missions, name/join-order clues). Questions are auto-built from what the Spy actually did.
-3. **Elimination** (toggle) — lowest crew score is out, ties go to the slower finisher. Phones show Safe / You're out.
-Final round: top quiz score wins the pot, then the Spy is unmasked.
-Host settings: missions (2–8), eliminations on/off. Content lives in `server/weasel-content.js`.
-
-Code layout: `server/games/weasel.js` (game logic), `public/weasel.js` (screens). Undercover logic is unchanged in `server/index.js` / `public/app.js`.
 
 ## The Weasel
 Internal id is `offmap` (files, settings, socket events).

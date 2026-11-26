@@ -49,8 +49,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', weasel: 'INSIDE JOB', offmap: 'THE WEASEL', amongus: 'AMONG US', clue: 'CLUE', target: 'HIT THE NUMBER', werewolf: 'WEREWOLF', calledshot: 'CALLED SHOT' };
-  const GAME_NAMES = { undercover: 'Undercover', weasel: 'Inside Job', offmap: 'The Weasel', amongus: 'Among Us', clue: 'Clue', target: 'Hit the Number', werewolf: 'Werewolf', calledshot: 'Called Shot' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', offmap: 'THE WEASEL', clue: 'CLUE', target: 'HIT THE NUMBER', werewolf: 'WEREWOLF', calledshot: 'CALLED SHOT' };
+  const GAME_NAMES = { undercover: 'Undercover', offmap: 'The Weasel', clue: 'Clue', target: 'Hit the Number', werewolf: 'Werewolf', calledshot: 'Called Shot' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -70,9 +70,7 @@
 
   function buildPeekCard() {
     const role = state.myRole;
-    if (role && role.game === 'weasel' && window.App.buildWeaselCard) return window.App.buildWeaselCard(role);
     if (role && role.game === 'offmap' && window.App.buildOffmapCard) return window.App.buildOffmapCard(role);
-    if (role && role.game === 'amongus' && window.App.buildAmongUsCard) return window.App.buildAmongUsCard(role);
     if (role && role.game === 'target' && window.App.buildTargetCard) return window.App.buildTargetCard(role);
     if (role && role.game === 'werewolf' && window.App.buildWerewolfCard) return window.App.buildWerewolfCard(role);
     const card = el('div', { class: 'card' });
@@ -193,7 +191,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: '8 games: Undercover, Inside Job, The Weasel, Among Us, Clue, Werewolf, Hit the Number and Called Shot. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: '6 games: Undercover, The Weasel, Clue, Werewolf, Hit the Number and Called Shot. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } }),
@@ -281,7 +279,7 @@
     children.push(list);
 
     const game = currentGame();
-    const minPlayers = game === 'werewolf' ? 5 : game === 'calledshot' ? 2 : (game === 'weasel' || game === 'amongus') ? 4 : 3;
+    const minPlayers = game === 'werewolf' ? 5 : game === 'calledshot' ? 2 : 3;
     const startBtn = (label) => el('div', { class: 'stack top' }, [
       room.players.length < minPlayers ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
       el('button', {
@@ -306,42 +304,7 @@
     }
     children.push(el('button', { class: 'ghost small help-link', text: `How to play ${GAME_NAMES[game]}`, onclick: () => showHelp(game) }));
 
-    if (isHost && game === 'weasel') {
-      const ws = room.settings.weasel || { rounds: 5, eliminations: true };
-      const box = el('div', {});
-      box.appendChild(el('div', { class: 'settings-row' }, [
-        el('div', {}, [el('div', { class: 'label', text: 'Missions' }), el('div', { class: 'sub', text: 'Mission + quiz rounds' })]),
-        el('div', { class: 'stepper' }, [
-          el('button', { class: 'secondary small', text: '\u2212', onclick: () => updateSettings({ weasel: { ...ws, rounds: Math.max(2, ws.rounds - 1) } }) }),
-          el('span', { class: 'val', text: ws.rounds }),
-          el('button', { class: 'secondary small', text: '+', onclick: () => updateSettings({ weasel: { ...ws, rounds: Math.min(8, ws.rounds + 1) } }) })
-        ])
-      ]));
-      box.appendChild(el('div', { class: 'settings-row' }, [
-        el('div', {}, [el('div', { class: 'label', text: 'Eliminations' }), el('div', { class: 'sub', text: 'Lowest quiz score is out each round. Ends at 2 crew left.' })]),
-        (() => {
-          const sw = el('label', { class: 'switch' });
-          const cb = el('input', { type: 'checkbox' });
-          cb.checked = ws.eliminations;
-          cb.addEventListener('change', () => updateSettings({ weasel: { ...ws, eliminations: cb.checked } }));
-          sw.appendChild(cb);
-          sw.appendChild(el('span', { class: 'track' }));
-          return sw;
-        })()
-      ]));
-      children.push(box);
-      const canStart = room.players.length >= minPlayers;
-      children.push(el('div', { class: 'stack top' }, [
-        !canStart ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
-        el('button', {
-          class: 'primary', id: 'start-btn', text: 'Start Inside Job',
-          onclick: () => socket.emit('start_game', { code: state.code, playerId: state.playerId }, (res) => {
-            if (res && !res.ok) { state.error = res.error; render(); }
-          })
-        }),
-        el('div', { class: 'error-text', text: state.error })
-      ]));
-    } else if (isHost && game === 'werewolf') {
+    if (isHost && game === 'werewolf') {
       const ws = room.settings.werewolf || { wolves: 0, seer: true, doctor: true, hunt: 45 };
       const set = (patch) => updateSettings({ werewolf: { ...ws, ...patch } });
       children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Werewolves' }), el('div', { class: 'sub', text: 'Auto = 1 for 5\u20136 players, 2 for 7\u20139, 3 for 10+' })])]));
@@ -404,27 +367,6 @@
       children.push(el('p', { class: 'center-note', text: '3\u20136 players. Turn order follows the player list above.' }));
       if (room.players.length > 6) children.push(el('p', { class: 'error-text', text: 'Clue supports up to 6 players.' }));
       children.push(startBtn('Start Clue'));
-    } else if (isHost && game === 'amongus') {
-      const au = room.settings.amongus || { impostors: 0, tasks: 5, killCooldown: 30 };
-      const set = (patch) => updateSettings({ amongus: { ...au, ...patch } });
-      const tabRow = (label, sub, options, current, key) => {
-        children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: label }), sub ? el('div', { class: 'sub', text: sub }) : null])]));
-        const tabs = el('div', { class: 'diff-tabs' });
-        options.forEach(([v, t]) => tabs.appendChild(el('button', { class: v === current ? 'active' : '', text: t, onclick: () => set({ [key]: v }) })));
-        children.push(tabs);
-        children.push(el('div', { style: 'height:14px' }));
-      };
-      tabRow('Impostors', 'Auto = 1 for 4\u20136 players, 2 for 7\u20138', [[0, 'Auto'], [1, '1'], [2, '2'], [3, '3']], au.impostors, 'impostors');
-      children.push(el('div', { class: 'settings-row' }, [
-        el('div', {}, [el('div', { class: 'label', text: 'Tasks per player' })]),
-        el('div', { class: 'stepper' }, [
-          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ tasks: Math.max(3, au.tasks - 1) }) }),
-          el('span', { class: 'val', text: au.tasks }),
-          el('button', { class: 'secondary small', text: '+', onclick: () => set({ tasks: Math.min(8, au.tasks + 1) }) })
-        ])
-      ]));
-      tabRow('Kill cooldown', 'Seconds an Impostor waits between kills', [[15, '15s'], [30, '30s'], [45, '45s'], [60, '60s']], au.killCooldown, 'killCooldown');
-      children.push(startBtn('Start Among Us'));
     } else if (isHost && game === 'offmap') {
       const om = room.settings.offmap || { minutes: 8 };
       children.push(el('div', { class: 'settings-row' }, [
@@ -695,9 +637,7 @@
 
   function phaseToView(room) {
     if (!room.round) return 'lobby';
-    if (room.round.game === 'weasel') return 'weasel';
     if (room.round.game === 'offmap') return 'offmap';
-    if (room.round.game === 'amongus') return 'amongus';
     if (room.round.game === 'clue') return 'clue';
     if (room.round.game === 'target') return 'target';
     if (room.round.game === 'werewolf') return 'werewolf';
@@ -707,7 +647,7 @@
 
   window.addEventListener('beforeunload', () => { /* keep session for reconnect */ });
 
-  // Shared toolkit for game modules (public/weasel.js)
+  // Shared toolkit for game modules (public/*.js)
   window.App = { socket, state, root, el, render, brand, buildPeekCard, appendPeekFab, VIEWS, GAME_NAMES };
 
   render();
