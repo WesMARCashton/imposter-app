@@ -9,6 +9,9 @@ const clue = require('./games/clue');
 const target = require('./games/target');
 const werewolf = require('./games/werewolf');
 const calledshot = require('./games/calledshot');
+const codenames = require('./games/codenames');
+const coup = require('./games/coup');
+const liarsdice = require('./games/liarsdice');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +22,10 @@ clue.init(io);
 target.init(io);
 werewolf.init(io, (code) => broadcastRoom(code));
 calledshot.init(io);
-const MODULES = { offmap, clue, target, werewolf, calledshot };
+codenames.init(io);
+coup.init(io);
+liarsdice.init(io);
+const MODULES = { offmap, clue, target, werewolf, calledshot, codenames, coup, liarsdice };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -89,7 +95,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', offmap: offmap.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings(), werewolf: werewolf.defaultSettings(), calledshot: calledshot.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', offmap: offmap.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings(), werewolf: werewolf.defaultSettings(), calledshot: calledshot.defaultSettings(), liarsdice: liarsdice.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -151,6 +157,7 @@ io.on('connection', (socket) => {
     if (settings.target) room.settings.target = target.sanitizeSettings(settings.target);
     if (settings.werewolf) room.settings.werewolf = werewolf.sanitizeSettings(settings.werewolf);
     if (settings.calledshot) room.settings.calledshot = calledshot.sanitizeSettings(settings.calledshot);
+    if (settings.liarsdice) room.settings.liarsdice = liarsdice.sanitizeSettings(settings.liarsdice);
     const maxImposters = Math.max(1, Math.floor(room.players.length / 3));
     room.settings.imposterCount = Math.min(Math.max(1, settings.imposterCount || 1), maxImposters);
     room.settings.mrWhite = !!settings.mrWhite;
@@ -283,6 +290,42 @@ io.on('connection', (socket) => {
   modAction('werewolf', 'ww_night', (room, d) => werewolf.nightPick(room, d.playerId, d.target));
   modAction('werewolf', 'ww_vote', (room, d) => werewolf.dayVote(room, d.playerId, d.target));
   modAction('werewolf', 'ww_chat', (room, d) => werewolf.packChat(room, d.playerId, d.msg));
+  // Codenames
+  modAction('codenames', 'cn_shuffle', (room) => codenames.shuffleTeams(room), true);
+  modAction('codenames', 'cn_switch', (room, d) => codenames.switchTeam(room, d.playerId));
+  modAction('codenames', 'cn_spymaster', (room, d) => codenames.claimSpymaster(room, d.playerId));
+  modAction('codenames', 'cn_begin', (room) => codenames.begin(room), true);
+  socket.on('cn_clue', (d, cb) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== 'codenames') return;
+    const res = codenames.giveClue(room, d.playerId, d.word, d.number) || {};
+    if (cb) cb(res);
+    broadcastRoom(d.code);
+  });
+  modAction('codenames', 'cn_guess', (room, d) => codenames.guess(room, d.playerId, d.idx));
+  modAction('codenames', 'cn_pass', (room, d) => codenames.pass(room, d.playerId));
+  // Coup
+  socket.on('coup_declare', (d, cb) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== 'coup') return;
+    const res = coup.declare(room, d.playerId, d.action, d.target) || {};
+    if (cb) cb(res);
+    broadcastRoom(d.code);
+  });
+  modAction('coup', 'coup_respond', (room, d) => coup.respond(room, d.playerId, d.type, d.role));
+  modAction('coup', 'coup_lose', (room, d) => coup.chooseLoss(room, d.playerId, d.idx));
+  modAction('coup', 'coup_exchange', (room, d) => coup.chooseExchange(room, d.playerId, d.keep));
+  // Liar's Dice
+  socket.on('ld_bid', (d, cb) => {
+    const room = d && rooms[d.code];
+    if (!room || !room.round || room.round.game !== 'liarsdice') return;
+    const res = liarsdice.bid(room, d.playerId, d.qty, d.face) || {};
+    if (cb) cb(res);
+    broadcastRoom(d.code);
+  });
+  modAction('liarsdice', 'ld_liar', (room, d) => liarsdice.callLiar(room, d.playerId));
+  modAction('liarsdice', 'ld_next', (room, d, isHost) => { if (isHost || room.round.reveal && room.round.reveal.loserId === d.playerId) liarsdice.nextRound(room); });
+
   modAction('calledshot', 'cs_call', (room, d) => calledshot.callShot(room, d.playerId, d.option));
   modAction('calledshot', 'cs_bet', (room, d) => calledshot.bet(room, d.playerId, d.choice));
   modAction('calledshot', 'cs_report', (room, d, isHost) => calledshot.report(room, d.playerId, !!d.hit, isHost));

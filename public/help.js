@@ -57,6 +57,78 @@
         ]]
       ]
     },
+    codenames: {
+      name: 'Codenames',
+      players: '4+ players \u00b7 two teams',
+      goal: 'Be the first team to find all your secret agents on the 25-word board.',
+      sections: [
+        ['Setup', [
+          'Split into Red and Blue teams (2+ each). Each team picks one Spymaster \ud83d\udd75\ufe0f.',
+          'Only Spymasters see the secret key on their phone: which words belong to Red, Blue, innocent bystanders, and the one Assassin.',
+          'The starting team has 9 words to find; the other team has 8.'
+        ]],
+        ['Your team\u2019s turn', [
+          'Your Spymaster gives a clue: ONE word + a number, e.g. \u201cOCEAN 2\u201d = two words on the board relate to ocean.',
+          'The clue can\u2019t be a word that\u2019s on the board. No hints, gestures or faces from the Spymaster!',
+          'Teammates talk it over and tap words. You get the number + 1 guesses.',
+          'Your team\u2019s word: keep going. Bystander or the other team\u2019s word: your turn ends. You can also end your turn early.'
+        ]],
+        ['Winning', [
+          'First team to reveal all their words wins (even if the other team reveals them for you).',
+          'Tap the Assassin \u2620 and your team loses instantly.'
+        ]]
+      ]
+    },
+    coup: {
+      name: 'Coup',
+      players: '2\u20136 players \u00b7 best with 4\u20135',
+      goal: 'Be the last player with any cards (influence) left.',
+      sections: [
+        ['Setup', [
+          'Everyone gets 2 secret character cards and 2 coins. Lose both cards and you\u2019re out.',
+          'There are 3 of each character: \ud83d\udc51 Duke, \ud83d\udde1\ufe0f Assassin, \u2693 Captain, \ud83d\udcdc Ambassador, \ud83d\udc83 Contessa.'
+        ]],
+        ['On your turn, pick one action', [
+          'Income: +1 coin. Can\u2019t be stopped.',
+          'Foreign Aid: +2 coins. Anyone claiming Duke can block it.',
+          'Coup: pay 7, a player of your choice loses a card. Can\u2019t be stopped. With 10+ coins you MUST Coup.',
+          '\ud83d\udc51 Tax (claim Duke): +3 coins.',
+          '\ud83d\udde1\ufe0f Assassinate (claim Assassin): pay 3, target loses a card. Target can block by claiming Contessa.',
+          '\u2693 Steal (claim Captain): take 2 coins from someone. They can block by claiming Captain or Ambassador.',
+          '\ud83d\udcdc Exchange (claim Ambassador): draw 2 cards, keep the ones you want, return the rest.'
+        ]],
+        ['Bluffing & challenges', [
+          'You can claim ANY character, whether you have it or not.',
+          'When someone claims a character (to act or to block), anyone can Challenge.',
+          'Challenged and they DO have it: they show it (and get a fresh card), and the challenger loses a card.',
+          'Challenged and they DON\u2019T: they lose a card and their action/block fails.',
+          'When you lose a card you pick which one to give up. It\u2019s then shown to everyone.'
+        ]]
+      ]
+    },
+    liarsdice: {
+      name: 'Liar\u2019s Dice',
+      players: '2\u20136 players',
+      goal: 'Be the last player with dice left.',
+      sections: [
+        ['Each round', [
+          'Everyone rolls their dice in secret (5 each to start). Only you see yours.',
+          'Take turns bidding on ALL the dice on the table, e.g. \u201cfour 3s\u201d = at least four dice showing 3 across everyone.',
+          'Each bid must go higher: more dice, or the same number of a higher face.',
+          'If 1s are wild (default), every 1 counts as whatever face is being bid, and you can\u2019t bid on 1s.'
+        ]],
+        ['Calling Liar', [
+          'On your turn, instead of raising you can call \u201cLiar!\u201d on the last bid.',
+          'Everyone\u2019s dice are revealed and counted.',
+          'If there are at least as many as bid, the caller loses a die. If not, the bidder loses a die.',
+          'The loser starts the next round. Lose all your dice and you\u2019re out.'
+        ]],
+        ['Tips', [
+          'Your own dice are a clue: with 15 dice out, about a third show any given face (counting wild 1s).',
+          'Bluff with confidence. Push the bid onto someone who has to either raise or call.'
+        ]]
+      ]
+    },
     werewolf: {
       name: 'Werewolf',
       players: '5+ players \u00b7 the app is the narrator',
