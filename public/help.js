@@ -31,34 +31,6 @@
         ]]
       ]
     },
-    weasel: {
-      name: 'Inside Job',
-      players: '4+ players',
-      goal: 'Crew: grow the pot and figure out who the Spy is. Spy: drain the pot without getting caught.',
-      sections: [
-        ['Setup', [
-          'One random player is the secret Spy. Everyone else is Crew.',
-          'Press and hold your card to see your role.'
-        ]],
-        ['Each round', [
-          'Mission: everyone plays a quick phone challenge. Success adds money to the pot. The Spy quietly sabotages.',
-          '• Brain Trust: trivia. $1,000 per correct answer.',
-          '• Mind Meld: no talking. Pick what you think the group will pick.',
-          '• Ballpark: guess a number. The group average has to be close.',
-          '• The Vault: a random team secretly picks Crack or Jam. One jam = no money.',
-          'Quiz: 5 questions about the Spy, e.g. who it is, what they answered in missions, clues about their name.',
-          'Elimination (if on): lowest Crew quiz score is out. Ties go to the slower finisher. Everyone checks their own phone: green = safe, red = out.'
-        ]],
-        ['Winning', [
-          'Final round: the Crew member with the best quiz score wins the pot.',
-          'Then the Spy is unmasked, along with how much money they cost the team.'
-        ]],
-        ['Tips', [
-          'Watch who gets missions wrong, and who was on the Vault team when it jammed.',
-          'Spy: don’t sabotage every mission. Being too obvious gets you caught.'
-        ]]
-      ]
-    },
     offmap: {
       name: 'The Weasel',
       players: '3+ players',
@@ -183,39 +155,6 @@
         ]]
       ]
     },
-    amongus: {
-      name: 'Among Us',
-      players: '4–8 players',
-      goal: 'Crewmates: finish your tasks or vote out every Impostor. Impostors: take out the crew without getting caught.',
-      sections: [
-        ['Setup', [
-          'Everyone is a Crewmate except 1–2 secret Impostors (the host picks how many).',
-          'Press and hold your card to see your role. Impostors can see who the other Impostors are.',
-          'Everyone starts in the Cafeteria.'
-        ]],
-        ['Moving & tasks', [
-          'Your phone shows the ship map. Tap a room next to yours to walk there.',
-          'You can only see who is in the same room as you.',
-          'Crewmates have a task list. Go to the room shown and tap the task to play a quick mini-game.',
-          'Every finished task fills the shared task bar. If the bar hits 100%, the Crew wins.',
-          'Impostors get a fake task list so they can pretend. Their tasks don’t count.'
-        ]],
-        ['Kills, bodies & meetings', [
-          'Impostors can kill a Crewmate who is in the same room. Then they wait for a cooldown.',
-          'If you’re killed, your phone tells you. Stay quiet! Ghosts can still do tasks.',
-          'Anyone who walks into a room with a body can tap Report. Each player also has one Emergency Meeting button.',
-          'A meeting freezes every phone. Talk it out across the table, then vote someone out or skip.'
-        ]],
-        ['Sabotage (Impostors)', [
-          'Lights: nobody can see who is in their room until someone fixes it in Electrical.',
-          'Reactor: two players must stand in the Reactor room before the countdown ends, or Impostors win.'
-        ]],
-        ['Winning', [
-          'Crew wins if all tasks are done or every Impostor is voted out.',
-          'Impostors win when they equal the number of living Crewmates, or a Reactor meltdown isn’t fixed in time.'
-        ]]
-      ]
-    }
   };
 
   function close() {

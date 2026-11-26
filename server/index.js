@@ -4,9 +4,7 @@ const path = require('path');
 const { Server } = require('socket.io');
 const { CATEGORY_LABELS, pickWordPair } = require('./words');
 const { shuffle: fisherYatesShuffle, genId } = require('./util');
-const weasel = require('./games/weasel');
 const offmap = require('./games/offmap');
-const amongus = require('./games/amongus');
 const clue = require('./games/clue');
 const target = require('./games/target');
 const werewolf = require('./games/werewolf');
@@ -16,14 +14,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
-weasel.init(io);
 offmap.init(io, (code) => broadcastRoom(code));
-amongus.init(io, (code) => broadcastRoom(code));
 clue.init(io);
 target.init(io);
 werewolf.init(io, (code) => broadcastRoom(code));
 calledshot.init(io);
-const MODULES = { weasel, offmap, amongus, clue, target, werewolf, calledshot };
+const MODULES = { offmap, clue, target, werewolf, calledshot };
 const GAMES = ['undercover', ...Object.keys(MODULES)];
 const moduleOf = (room) => room && room.round && MODULES[room.round.game];
 
@@ -93,7 +89,7 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       phase: 'lobby',
-      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', weasel: weasel.defaultSettings(), offmap: offmap.defaultSettings(), amongus: amongus.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings(), werewolf: werewolf.defaultSettings(), calledshot: calledshot.defaultSettings() },
+      settings: { game: 'undercover', imposterCount: 1, mrWhite: false, difficulty: 'medium', offmap: offmap.defaultSettings(), clue: clue.defaultSettings(), target: target.defaultSettings(), werewolf: werewolf.defaultSettings(), calledshot: calledshot.defaultSettings() },
       players: [{ id: playerId, name: name.trim().slice(0, 20), connected: true, socketId: socket.id }],
       round: null
     };
@@ -151,9 +147,7 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.hostId !== playerId || room.phase !== 'lobby') return;
     if (GAMES.includes(settings.game)) room.settings.game = settings.game;
-    if (settings.weasel) room.settings.weasel = weasel.sanitizeSettings(settings.weasel);
     if (settings.offmap) room.settings.offmap = offmap.sanitizeSettings(settings.offmap);
-    if (settings.amongus) room.settings.amongus = amongus.sanitizeSettings(settings.amongus);
     if (settings.target) room.settings.target = target.sanitizeSettings(settings.target);
     if (settings.werewolf) room.settings.werewolf = werewolf.sanitizeSettings(settings.werewolf);
     if (settings.calledshot) room.settings.calledshot = calledshot.sanitizeSettings(settings.calledshot);
@@ -272,27 +266,6 @@ io.on('connection', (socket) => {
     broadcastRoom(code);
   });
 
-  // ---- The Weasel ----
-  socket.on('w_advance', ({ code, playerId }) => {
-    const room = rooms[code];
-    if (!room || room.hostId !== playerId || !room.round || room.round.game !== 'weasel') return;
-    weasel.advance(room);
-    broadcastRoom(code);
-  });
-
-  socket.on('w_submit', ({ code, playerId, value }) => {
-    const room = rooms[code];
-    if (!room || !room.round || room.round.game !== 'weasel') return;
-    weasel.submit(room, playerId, value);
-    broadcastRoom(code);
-  });
-
-  socket.on('w_quiz_submit', ({ code, playerId, answers }) => {
-    const room = rooms[code];
-    if (!room || !room.round || room.round.game !== 'weasel') return;
-    weasel.submitQuiz(room, playerId, answers);
-    broadcastRoom(code);
-  });
 
   socket.on('client_error', (info) => {
     try { console.error('[client_error]', JSON.stringify(info).slice(0, 1500)); } catch (e) { /* ignore */ }
@@ -345,38 +318,6 @@ io.on('connection', (socket) => {
   clueAction('clue_skip_turn', (room, d) => clue.endTurn(room, d.playerId, true), true);
   clueAction('clue_accuse', (room, d) => clue.accuse(room, d.playerId, d.suspect, d.weapon, d.room));
 
-  // ---- Among Us ----
-  const auRoom = (code) => { const room = rooms[code]; return room && room.round && room.round.game === 'amongus' ? room : null; };
-  socket.on('au_advance', ({ code, playerId }) => {
-    const room = auRoom(code);
-    if (!room || room.hostId !== playerId) return;
-    amongus.advance(room);
-    broadcastRoom(code);
-  });
-  socket.on('au_move', ({ code, playerId, to }) => {
-    const room = auRoom(code);
-    if (!room) return;
-    amongus.move(room, playerId, to);
-    broadcastRoom(code);
-  });
-  socket.on('au_task', ({ code, playerId, taskId }) => {
-    const room = auRoom(code);
-    if (!room) return;
-    amongus.completeTask(room, playerId, taskId);
-    broadcastRoom(code);
-  });
-  const auAction = (ev, fn) => socket.on(ev, (data) => {
-    const room = auRoom(data && data.code);
-    if (!room) return;
-    fn(room, data);
-    broadcastRoom(data.code);
-  });
-  auAction('au_kill', (room, d) => amongus.kill(room, d.playerId, d.targetId));
-  auAction('au_report', (room, d) => amongus.report(room, d.playerId));
-  auAction('au_emergency', (room, d) => amongus.emergency(room, d.playerId));
-  auAction('au_vote', (room, d) => amongus.vote(room, d.playerId, d.target));
-  auAction('au_sabotage', (room, d) => amongus.sabotage(room, d.playerId, d.type));
-  auAction('au_fix', (room, d) => amongus.fixSabotage(room, d.playerId));
 
   // ---- Off the Map ----
   socket.on('om_advance', ({ code, playerId }) => {
