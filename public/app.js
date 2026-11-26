@@ -49,8 +49,8 @@
     }
   }
 
-  const GAME_LABELS = { undercover: 'UNDERCOVER', offmap: 'THE WEASEL', clue: 'CLUE', target: 'HIT THE NUMBER', werewolf: 'WEREWOLF', calledshot: 'CALLED SHOT' };
-  const GAME_NAMES = { undercover: 'Undercover', offmap: 'The Weasel', clue: 'Clue', target: 'Hit the Number', werewolf: 'Werewolf', calledshot: 'Called Shot' };
+  const GAME_LABELS = { undercover: 'UNDERCOVER', offmap: 'THE WEASEL', clue: 'CLUE', target: 'HIT THE NUMBER', werewolf: 'WEREWOLF', calledshot: 'CALLED SHOT', codenames: 'CODENAMES', coup: 'COUP', liarsdice: 'LIAR\'S DICE' };
+  const GAME_NAMES = { undercover: 'Undercover', offmap: 'The Weasel', clue: 'Clue', target: 'Hit the Number', werewolf: 'Werewolf', calledshot: 'Called Shot', codenames: 'Codenames', coup: 'Coup', liarsdice: 'Liar\'s Dice' };
   const currentGame = () => (state.room && state.room.settings && state.room.settings.game) || 'undercover';
 
   function el(tag, attrs = {}, children = []) {
@@ -191,7 +191,7 @@
     screen([
       brand(),
       el('h1', { text: 'Trust no one.' }),
-      el('p', { text: '6 games: Undercover, The Weasel, Clue, Werewolf, Hit the Number and Called Shot. Host picks in the lobby. Everyone plays from their own phone.' }),
+      el('p', { text: '9 games: Undercover, The Weasel, Clue, Werewolf, Codenames, Coup, Liar\'s Dice, Hit the Number and Called Shot. Host picks in the lobby. Everyone plays from their own phone.' }),
       el('div', { class: 'stack top' }, [
         el('button', { class: 'primary', text: 'Host a Game', onclick: () => { state.view = 'host-name'; render(); } }),
         el('button', { class: 'secondary', text: 'Join a Game', onclick: () => { state.view = 'join-name'; render(); } }),
@@ -279,7 +279,7 @@
     children.push(list);
 
     const game = currentGame();
-    const minPlayers = game === 'werewolf' ? 5 : game === 'calledshot' ? 2 : 3;
+    const minPlayers = game === 'werewolf' ? 5 : game === 'codenames' ? 4 : (game === 'calledshot' || game === 'coup' || game === 'liarsdice') ? 2 : 3;
     const startBtn = (label) => el('div', { class: 'stack top' }, [
       room.players.length < minPlayers ? el('p', { text: `Need at least ${minPlayers} players to start.` }) : null,
       el('button', {
@@ -304,7 +304,30 @@
     }
     children.push(el('button', { class: 'ghost small help-link', text: `How to play ${GAME_NAMES[game]}`, onclick: () => showHelp(game) }));
 
-    if (isHost && game === 'werewolf') {
+    if (isHost && game === 'codenames') {
+      children.push(el('p', { class: 'center-note', text: '4+ players. You\u2019ll pick teams and Spymasters on the next screen.' }));
+      children.push(startBtn('Set up Codenames'));
+    } else if (isHost && game === 'coup') {
+      children.push(el('p', { class: 'center-note', text: '2\u20136 players (best with 4\u20135). Everyone starts with 2 secret cards and 2 coins.' }));
+      if (room.players.length > 6) children.push(el('p', { class: 'error-text', text: 'Coup supports up to 6 players.' }));
+      children.push(startBtn('Start Coup'));
+    } else if (isHost && game === 'liarsdice') {
+      const ld = room.settings.liarsdice || { dice: 5, wild: true };
+      const set = (patch) => updateSettings({ liarsdice: { ...ld, ...patch } });
+      children.push(el('div', { class: 'settings-row' }, [
+        el('div', {}, [el('div', { class: 'label', text: 'Dice each' }), el('div', { class: 'sub', text: 'Fewer dice = shorter game' })]),
+        el('div', { class: 'stepper' }, [
+          el('button', { class: 'secondary small', text: '\u2212', onclick: () => set({ dice: Math.max(3, ld.dice - 1) }) }),
+          el('span', { class: 'val', text: ld.dice }),
+          el('button', { class: 'secondary small', text: '+', onclick: () => set({ dice: Math.min(6, ld.dice + 1) }) })
+        ])
+      ]));
+      const sw = el('label', { class: 'switch' }); const cb = el('input', { type: 'checkbox' }); cb.checked = ld.wild;
+      cb.addEventListener('change', () => set({ wild: cb.checked })); sw.appendChild(cb); sw.appendChild(el('span', { class: 'track' }));
+      children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: '1s are wild' }), el('div', { class: 'sub', text: '1s count as any face' })]), sw]));
+      children.push(el('div', { style: 'height:12px' }));
+      children.push(startBtn('Start Liar\'s Dice'));
+    } else if (isHost && game === 'werewolf') {
       const ws = room.settings.werewolf || { wolves: 0, seer: true, doctor: true, hunt: 45 };
       const set = (patch) => updateSettings({ werewolf: { ...ws, ...patch } });
       children.push(el('div', { class: 'settings-row' }, [el('div', {}, [el('div', { class: 'label', text: 'Werewolves' }), el('div', { class: 'sub', text: 'Auto = 1 for 5\u20136 players, 2 for 7\u20139, 3 for 10+' })])]));
@@ -642,6 +665,9 @@
     if (room.round.game === 'target') return 'target';
     if (room.round.game === 'werewolf') return 'werewolf';
     if (room.round.game === 'calledshot') return 'calledshot';
+    if (room.round.game === 'codenames') return 'codenames';
+    if (room.round.game === 'coup') return 'coup';
+    if (room.round.game === 'liarsdice') return 'liarsdice';
     return room.round.phase || 'reveal';
   }
 

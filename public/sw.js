@@ -1,5 +1,5 @@
-const CACHE = 'undercover-v24';
-const ASSETS = ['/', '/style.css', '/app.js', '/offmap-questions.js', '/offmap.js', '/clue.js', '/target.js', '/werewolf.js', '/calledshot.js', '/help.js', '/manifest.json'];
+const CACHE = 'undercover-v25';
+const ASSETS = ['/', '/style.css', '/app.js', '/offmap-questions.js', '/offmap.js', '/clue.js', '/target.js', '/werewolf.js', '/calledshot.js', '/codenames.js', '/coup.js', '/liarsdice.js', '/help.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

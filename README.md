@@ -1,6 +1,6 @@
 # Office Shenanigans
 
-Office party games (Undercover, The Weasel, Clue, Werewolf, Hit the Number, Called Shot).
+Office party games (Undercover, The Weasel, Clue, Werewolf, Codenames, Coup, Liar's Dice, Hit the Number, Called Shot). Full rules for each game are in public/help.js (How to play in the app).
 
 ## Stack
 - Node/Express + Socket.io (realtime rooms, in-memory state)
