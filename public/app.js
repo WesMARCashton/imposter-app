@@ -29,6 +29,12 @@
     root.innerHTML = '';
     try {
       if (!VIEWS[state.view]) {
+        if (state.code && document.readyState === 'loading') {
+          // Game screens are still loading; draw once every script has run.
+          root.appendChild(el('div', { class: 'screen' }, [el('p', { class: 'center-note', text: 'Loading\u2026' })]));
+          if (!render.waiting) { render.waiting = true; document.addEventListener('DOMContentLoaded', () => { render.waiting = false; render(); }); }
+          return;
+        }
         if (state.code) throw new Error('No screen for view "' + state.view + '" (app may be out of date)');
         VIEWS.home();
       } else VIEWS[state.view]();
@@ -619,6 +625,12 @@
   // ---------------- SOCKET EVENTS ----------------
 
   socket.on('connect', () => {
+    if (document.readyState === 'loading') {
+      // Wait for all game scripts before rejoining, or the game screen may not exist yet.
+      document.addEventListener('DOMContentLoaded', rejoinSaved, { once: true });
+    } else rejoinSaved();
+  });
+  function rejoinSaved() {
     const saved = localStorage.getItem('undercover_session');
     if (saved) {
       const { code, playerId } = JSON.parse(saved);
@@ -633,7 +645,7 @@
         }
       });
     }
-  });
+  }
 
   socket.on('room_update', (room) => {
     state.room = room;
